@@ -12,7 +12,7 @@ export class Network{
   this.close();this.error='';this.latest=null;
   let parsed:URL;try{parsed=new URL(url);}catch{throw new Error('Enter a server address, such as http://192.168.1.10:3001.');}if(!['http:','https:'].includes(parsed.protocol))throw new Error('Use an http or https server address.');
   const socket=io(parsed.origin,{autoConnect:false,timeout:7000,reconnection:true});this.socket=socket;let joined=false;
-  socket.on('snapshot',(s:Snapshot)=>{this.latest=s;this.lastReceived=performance.now();this.buffer.push({time:performance.now(),data:s});if(this.buffer.length>8)this.buffer.shift();this.onUpdate(s);});
+  socket.on('snapshot',(s:Snapshot)=>{const time=performance.now();this.latest=s;this.lastReceived=time;this.buffer.push({time,data:s});if(this.buffer.length>32)this.buffer.shift();this.onUpdate(s);});
   socket.on('events',(events:GameEvent[])=>this.onEvents(events));
   socket.on('disconnect',()=>{this.connected=false;this.error='Connection lost. Reconnecting…';});
   socket.on('connect',()=>{this.connected=true;this.error='';if(joined)socket.emit('join',{code:this.code,token:this.token},(r:{error?:string})=>{if(r.error)this.error=r.error;});});
@@ -24,17 +24,10 @@ export class Network{
  }
  send(input:RacketInput,ready:boolean){if(this.connected)this.socket?.volatile.emit('input',{...input,ready});}
  sample(now:number):Game|null{
-  if(!this.latest)return null;const game=Object.assign(new Game(),this.latest.game);const target=now-CONFIG.NETWORK_INTERPOLATION_MS;
+  if(!this.latest)return null;const target=now-CONFIG.NETWORK_INTERPOLATION_MS,game=Object.assign(new Game(),this.latest.game);
   const a=[...this.buffer].reverse().find(v=>v.time<=target),b=this.buffer.find(v=>v.time>target);
-  if(a&&b){const alpha=Math.min(1,(target-a.time)/(b.time-a.time));game.balls=this.latest.game.balls.map((ball,i)=>{const old=a.data.game.balls[i],next=b.data.game.balls[i];if(!old||!next||old.lastSide!==next.lastSide||Math.abs(old.z-next.z)>1)return{...ball};return{...ball,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha,z:old.z+(next.z-old.z)*alpha};});game.rackets=this.latest.game.rackets.map((r,i)=>{const old=a.data.game.rackets[i],next=b.data.game.rackets[i];return{...r,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha};});}
-  else{
-   // Running past the newest snapshot is normal once latency exceeds the buffer. Carry the
-   // ball forward on its own velocity rather than freezing it on the last known point,
-   // which is what actually reads as stutter.
-   const newest=this.buffer.at(-1),ahead=newest?Math.max(0,Math.min(.25,(target-newest.time)/1000)):0;
-   game.balls=game.balls.map(b=>ahead>0?{...b,x:b.x+b.vx*ahead,y:b.y+b.vy*ahead-.5*GRAVITY*ahead*ahead,z:b.z+b.vz*ahead}:{...b});
-   game.rackets=game.rackets.map(r=>({...r}));
-  }
+  if(a&&b){const alpha=Math.min(1,(target-a.time)/(b.time-a.time));game.balls=this.latest.game.balls.map((ball,i)=>{const old=a.data.game.balls[i],next=b.data.game.balls[i];if(!old||!next||Math.hypot(next.x-old.x,next.y-old.y,next.z-old.z)>1.4)return{...ball};const trail=next.trail.map((p,j)=>{const q=old.trail[j];return q?{x:q.x+(p.x-q.x)*alpha,y:q.y+(p.y-q.y)*alpha,z:q.z+(p.z-q.z)*alpha}:{...p};});return{...next,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha,z:old.z+(next.z-old.z)*alpha,trail};});game.rackets=this.latest.game.rackets.map((r,i)=>{const old=a.data.game.rackets[i],next=b.data.game.rackets[i];return old&&next?{...next,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha}:{...r};});}
+  else{const seconds=Math.min(CONFIG.NETWORK_EXTRAPOLATION_MS,Math.max(0,now-this.lastReceived))/1000;game.rackets=game.rackets.map(r=>({...r}));game.balls=game.balls.map(b=>({...b,x:b.x+b.vx*seconds,y:b.y+b.vy*seconds-.5*GRAVITY*seconds*seconds,z:b.z+b.vz*seconds,trail:b.trail.map(p=>({...p}))}));}
   return game;
  }
  submitForm(hitId:string,score:number){if(Number.isFinite(score))this.socket?.emit('form_result',{hitId,score:Math.max(0,Math.min(100,score))});}
