@@ -63,6 +63,12 @@ test('layout fits desktop and smaller screens',async({page})=>{
   }
 });
 
+test('paddle and table audio samples are served locally',async({request})=>{
+  for(const path of ['/audio/paddle-hit.mp3','/audio/table-bounce.mp3']){
+    const response=await request.get(path);expect(response.ok()).toBeTruthy();expect(response.headers()['content-type']).toContain('audio/mpeg');expect((await response.body()).length).toBeGreaterThan(5000);
+  }
+});
+
 test('the local pose model loads in the worker and the camera is released on exit',async({playwright})=>{
   const browser=await playwright.chromium.launch({args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
   const context=await browser.newContext({permissions:['camera']});const page=await context.newPage();
