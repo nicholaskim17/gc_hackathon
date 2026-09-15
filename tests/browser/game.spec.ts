@@ -54,6 +54,7 @@ test('layout fits desktop and smaller screens',async({page})=>{
     const pixelData=await page.locator('#arena').evaluate(canvas=>{const element=canvas as HTMLCanvasElement;return element.toDataURL('image/png');});
     expect(pixelData.startsWith('data:image/png;base64,')).toBeTruthy();expect(pixelData.length).toBeGreaterThan(1000);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+    if(size.width===390){await page.getByRole('button',{name:'Try without camera'}).click();await expect(page.locator('#score')).toBeVisible();const box=await page.locator('.game-top').boundingBox();expect(box).not.toBeNull();expect(box!.x+box!.width).toBeLessThanOrEqual(size.width+1);await page.screenshot({path:'/tmp/rally-scoreboard-mobile.png'});}
   }
 });
 
