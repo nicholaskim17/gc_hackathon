@@ -19,9 +19,9 @@ The software MVP is implemented and the automated suite is green. The architectu
 
 - Increased client input from 30 Hz to 60 Hz.
 - Increased authoritative snapshots from 30 Hz to 60 Hz.
-- Added an 80 ms interpolation buffer so packet arrival variance is smoothed instead of rendered as visible jumps.
+- Added a 60 ms interpolation buffer so packet arrival variance is smoothed instead of rendered as visible jumps.
 - Added bounded 100 ms extrapolation for short packet gaps.
-- Kept physics at 120 Hz and pose inference at 30 Hz.
+- Kept physics at 120 Hz and pose inference at the configured 45 Hz.
 - Kept immediate local paddle rendering so the player's own racket does not wait for a server round trip.
 - Replaced the React Three Fiber render bridge with a direct Three.js render loop, disabled expensive post-processing and shadows, and reduced trail and particle work on every frame.
 
@@ -89,13 +89,13 @@ Use front lighting and avoid bright windows behind either player. If peer-to-pee
 INPUT_HZ: 60
 STATE_BROADCAST_HZ: 60
 PHYSICS_HZ: 120
-CV_HZ: 30
-NETWORK_INTERPOLATION_MS: 80
+CV_HZ: 45
+NETWORK_INTERPOLATION_MS: 60
 NETWORK_EXTRAPOLATION_MS: 100
 TRACKING_INIT_TIMEOUT_MS: 15000
 INPUT_TIMEOUT_MS: 1600
 STARTUP_INPUT_TIMEOUT_MS: 6000
-PADDLE_SMOOTHING: 24
+PADDLE_SMOOTHING: 32
 PADDLE_RADIUS_X: 0.48
 PADDLE_RADIUS_Y: 0.58
 ```

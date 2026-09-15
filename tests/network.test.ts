@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Game } from '@rally/shared';
 import { Network } from '../apps/client/src/network';
 import type { Snapshot } from '@rally/shared/protocol';
+import { CONFIG } from '@rally/shared/config';
 
 function snapshot(x: number, time: number): { time: number; data: Snapshot } {
   const game = new Game();
@@ -37,8 +38,9 @@ describe('network render timeline', () => {
 
     const game = network.sample(1090);
 
-    expect(game?.balls[0].x).toBeCloseTo(0.02, 4);
-    expect(game?.balls[0].trail[0].x).toBeCloseTo(0.02, 4);
+    const expected=0.12*(1090-CONFIG.NETWORK_INTERPOLATION_MS-1000)/(1060-1000);
+    expect(game?.balls[0].x).toBeCloseTo(expected, 4);
+    expect(game?.balls[0].trail[0].x).toBeCloseTo(expected, 4);
   });
 
   it('extrapolates only for a bounded packet gap', () => {
