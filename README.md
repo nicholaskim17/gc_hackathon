@@ -5,6 +5,23 @@ laptop uses its own webcam to track one player and turns that player's hand into
 virtual racket. The server keeps both screens on the same match state. Camera video
 stays on the laptop that captured it; only racket input is sent over the network.
 
+## Technology
+
+- **TypeScript** is used across the client, server, and shared game code.
+- **React and Vite** provide the browser app and development server. React mounts the
+  app, while the fast-changing game loop runs outside React's render cycle.
+- **Three.js** renders the 3D court. The table, rackets, ball, lighting, particles,
+  crowd, and in-world labels are built from Three.js geometry and materials and drawn
+  directly to a WebGL canvas.
+- **MediaPipe Tasks Vision** provides the computer vision layer. Pose Landmarker runs
+  locally in a Web Worker, reads the webcam stream, and supplies body landmarks used to
+  find the playing hand and move the virtual racket. The client tries the GPU delegate
+  first and falls back to CPU when needed.
+- **Socket.IO** connects both clients to the Node.js server. The server owns the shared
+  physics, collisions, scoring, and match state; clients send derived racket input and
+  render the result locally.
+- **Web Audio** handles the local music, hit sounds, table bounces, and voice feedback.
+
 ## Requirements
 
 - Node.js 24 or newer
