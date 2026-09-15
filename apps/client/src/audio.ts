@@ -13,8 +13,13 @@ export class Sound {
     g.gain.setValueAtTime(0,c.currentTime+delay);g.gain.linearRampToValueAtTime(volume,c.currentTime+delay+.006);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+delay+duration);
     o.connect(g);g.connect(c.destination);o.start(c.currentTime+delay);o.stop(c.currentTime+delay+duration);
   }
-  hit(rally:number,slow=false){if(this.sample('paddle',.42,(slow?.82:1)+Math.min(.12,rally*.004)))return;this.tone((440+Math.min(300,rally*14))*(slow?.7:1),.075,'triangle',.13);this.tone(110,.035,'sine',.17);}
-  bounce(){if(!this.sample('bounce',.3,.96))this.tone(720,.035,'triangle',.035);}
-  item(){[523,659,784,1047].forEach((n,i)=>this.tone(n,.18,'sine',.1,i*.07));}
-  end(){[523,659,784,1047,784,1047].forEach((n,i)=>this.tone(n,.25,'triangle',.07,i*.13));}
+  private noise(duration=.08,volume=.05,frequency=1800,delay=0){if(this.muted||!this.context)return;const c=this.context,length=Math.max(1,Math.floor(c.sampleRate*duration)),buffer=c.createBuffer(1,length,c.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);const source=c.createBufferSource(),filter=c.createBiquadFilter(),gain=c.createGain();filter.type='bandpass';filter.frequency.value=frequency;filter.Q.value=.7;gain.gain.setValueAtTime(volume,c.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.001,c.currentTime+delay+duration);source.buffer=buffer;source.connect(filter);filter.connect(gain);gain.connect(c.destination);source.start(c.currentTime+delay);}
+  hit(rally:number,slow=false){const rate=(slow?.82:1)+Math.min(.18,rally*.006);this.sample('paddle',.48,rate);this.noise(.055,.075,2600);this.tone((520+Math.min(420,rally*18))*(slow?.7:1),.09,'triangle',.1);this.tone(82,.13,'sine',.19);if(rally>8)this.tone(1040+Math.min(700,rally*16),.07,'sine',.045,.025);}
+  bounce(){this.sample('bounce',.32,.96);this.tone(760,.045,'triangle',.038);this.noise(.025,.018,1200);}
+  item(){this.noise(.32,.09,3200);[392,523,659,784,1047,1319].forEach((n,i)=>this.tone(n,.2,'sine',.085,i*.052));this.tone(70,.28,'sine',.16);}
+  miss(){this.noise(.18,.035,450);[260,210,150].forEach((n,i)=>this.tone(n,.15,'sawtooth',.035,i*.075));}
+  net(){this.noise(.09,.055,900);this.tone(145,.12,'square',.025);}
+  perfect(){this.noise(.22,.06,4200);[784,1047,1319,1568].forEach((n,i)=>this.tone(n,.22,'sine',.07,i*.045));}
+  point(){this.noise(.4,.075,1800);[262,392,523,784].forEach((n,i)=>this.tone(n,.28,'triangle',.07,i*.065));this.tone(58,.3,'sine',.18);}
+  end(){this.noise(.8,.1,2400);[523,659,784,1047,784,1047,1319].forEach((n,i)=>this.tone(n,.28,'triangle',.075,i*.11));}
 }

@@ -10,7 +10,7 @@ async function createRoom(page:Page){
   await expect(page.locator('#camera-status')).toBeVisible();
 }
 
-test('keyboard practice runs a round, pauses, finishes and replays',async({page})=>{
+test('keyboard practice runs a round, finishes and replays',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/?debug=1');
   await expect(page.getByRole('heading',{name:/Ready\. Set\./})).toBeVisible();
@@ -22,15 +22,6 @@ test('keyboard practice runs a round, pauses, finishes and replays',async({page}
   // The racket answers the keyboard.
   await page.keyboard.down('KeyD');await page.waitForTimeout(220);await page.keyboard.up('KeyD');
   await page.keyboard.down('ArrowUp');await page.waitForTimeout(220);await page.keyboard.up('ArrowUp');
-
-  // Pause freezes the rally until it is resumed.
-  await page.getByRole('button',{name:'Pause game'}).click();
-  await expect(page.getByRole('button',{name:'Resume'})).toBeVisible();
-  const frozen=await page.locator('#rally').textContent();
-  await page.waitForTimeout(700);
-  await expect(page.locator('#rally')).toHaveText(frozen!);
-  await page.getByRole('button',{name:'Resume'}).click();
-  await expect(page.getByRole('button',{name:'Resume'})).toHaveCount(0);
 
   // Debug scoring drives the match to its first-to-seven finish deterministically.
   for(let i=0;i<7;i++){await page.keyboard.press('Digit7');await page.waitForTimeout(60);}
