@@ -110,8 +110,12 @@ test('two independent browsers pair and enter the same network match',async({bro
     await Promise.all([expect(host.locator('#score')).toBeVisible(),expect(guest.locator('#score')).toBeVisible()]);
     await expect(host.locator('#view-toggle')).toContainText('Player 1');
     await expect(guest.locator('#view-toggle')).toContainText('Player 2');
-    await expect(host.locator('#points-a')).toHaveText('0');
-    await expect(guest.locator('#points-a')).toHaveText('0');
+    await expect(host.locator('.score-team').nth(0)).toContainText('PLAYER 1');
+    await expect(host.locator('.score-team').nth(1)).toContainText('PLAYER 2');
+    await expect(guest.locator('.score-team').nth(0)).toContainText('PLAYER 1');
+    await expect(guest.locator('.score-team').nth(1)).toContainText('PLAYER 2');
+    expect(await host.locator('#points-a').textContent()).toBe(await guest.locator('#points-a').textContent());
+    expect(await host.locator('#points-b').textContent()).toBe(await guest.locator('#points-b').textContent());
 
     // Closing one peer exercises the server's real disconnect pause path without
     // depending on a moving game overlay or a timing-sensitive button click.
