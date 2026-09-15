@@ -18,11 +18,11 @@ export class Rooms{
  leave(room:Room,side:number){this.disconnect(room,side);room.players[side]=null;if(!room.players.some(p=>p?.socketId))this.rooms.delete(room.code);else{room.phase='lobby';room.game=new Game(Math.random,true);}}
  expire(now:number){for(const [code,room] of this.rooms){room.players=room.players.map(p=>p&&!p.socketId&&now-(p.disconnectedAt??now)>CONFIG.SEAT_RECOVERY_MS?null:p);if(room.players.every(p=>p===null))this.rooms.delete(code);}}
  form(room:Room,side:number,payload:unknown){if(!payload||typeof payload!=='object')return false;const p=payload as Record<string,unknown>;return typeof p.hitId==='string'&&typeof p.score==='number'&&room.game.confirmForm(p.hitId,side,p.score);}
- bothReady(room:Room,now:number){return room.players.every(p=>p?.socketId&&p.ready&&now-p.lastInput<CONFIG.INPUT_TIMEOUT_MS);}
+ bothReady(room:Room,now:number,timeout:number=CONFIG.INPUT_TIMEOUT_MS){return room.players.every(p=>p?.socketId&&p.ready&&now-p.lastInput<timeout);}
  resume(room:Room){if(room.phase!=='paused'||!this.bothReady(room,Date.now()))return false;room.phase='countdown';room.countdown=3;room.reason='';return true;}
  replay(room:Room,side:number){if(room.phase!=='results')return;room.replays.add(side);if(room.replays.size===2){room.game=new Game(Math.random,true);room.phase='lobby';room.replays.clear();room.countdown=3;}}
  tick(room:Room,dt:number,now=Date.now()){
-  const ready=this.bothReady(room,now);
+  const ready=this.bothReady(room,now,room.phase==='lobby'||room.phase==='countdown'?CONFIG.STARTUP_INPUT_TIMEOUT_MS:CONFIG.INPUT_TIMEOUT_MS);
   if(room.phase==='lobby'&&ready){room.phase='countdown';room.countdown=3;}
   if((room.phase==='playing'||room.phase==='countdown')&&!ready){room.phase='paused';room.reason='Motion paused. Both players need to be ready.';}
   const inputs=room.players.map((p,i)=>p?.input??neutralInput()[i]);

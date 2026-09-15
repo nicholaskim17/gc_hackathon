@@ -94,7 +94,7 @@ function updatePreview(now:number){
  }
  if(view==='setup'){
   const keyboardMode=mode==='keyboard';for(const [id,value] of [['camera-ready',!!tracking.stream],['head-ready',!!result?.head],['shoulder-ready',!!result?.shoulders],['hand-ready',tracking.detected(now)]] as [string,boolean][])$(id).classList.toggle('ready',value);
-  if(!keyboardMode){setText('camera-status',tracking.status);const stage=result?.calibrationStage??'body';const copy={body:['Step into view.','Keep your shoulders, elbows, and wrists visible.'],hand:['Raise your playing hand.','Hold it above your shoulder for a moment.'],neutral:['Find your comfortable spot.','Lower your hand comfortably in front of you. Hold still.'],ready:['Ready when you are.','Move your hand. Your racket follows.']}[stage];setText('calibration-title',copy[0]);setText('calibration-instruction',copy[1]);}$('camera-placeholder').style.display=tracking.stream?'none':'flex';
+  if(!keyboardMode){setText('camera-status',tracking.status);$('camera-status').classList.toggle('error',tracking.error);const stage=result?.calibrationStage??'body';const copy={body:['Step into view.','Keep your shoulders, elbows, and wrists visible.'],hand:['Raise your playing hand.','Hold it above your shoulder for a moment.'],neutral:['Find your comfortable spot.','Lower your hand comfortably in front of you. Hold still.'],ready:['Ready when you are.','Move your hand. Your racket follows.']}[stage];setText('calibration-title',copy[0]);setText('calibration-instruction',copy[1]);}$('camera-placeholder').style.display=tracking.stream?'none':'flex';
   ($('ready-button') as HTMLButtonElement).disabled=!keyboardMode&&!tracking.detected(now);
   const peer=network.latest?.players[1-network.side];setText('peer-status',!peer?.connected?'Waiting for your teammate…':peer.ready?'Teammate is ready!':'Teammate is setting up');
  }
@@ -140,7 +140,7 @@ function loop(now:number){const dt=Math.min(.05,(now-last)/1000);last=now;
   }
   renderer?.draw(game,now/1000);updateHud();if(game.ended)results();
  }
- const history=tracking.history;const cvFps=history.length>1?Math.round((history.length-1)*1000/(history.at(-1)!.time-history[0].time)):0;debug.tick({dt,cvFps,connected:network.connected,rtt:network.rtt,side:session==='network'?network.side:0,confidence:tracking.result?.confidence??0,speed:tracking.input.speed??0,elbow:tracking.result?.elbowAngle??0});
+ const history=tracking.history;const cvFps=history.length>1?Math.round((history.length-1)*1000/(history.at(-1)!.time-history[0].time)):0;debug.tick({dt,cvFps,connected:network.connected,rtt:network.rtt,side:session==='network'?network.side:0,confidence:tracking.result?.confidence??0,speed:tracking.input.speed??0,elbow:tracking.result?.elbowAngle??0,tracking:tracking.ready?tracking.delegate||'ready':mode==='camera'?tracking.status:'off'});
  requestAnimationFrame(loop);
 }
 $('home').onclick=()=>view==='game'?pause('Heading back to the menu?'):title();

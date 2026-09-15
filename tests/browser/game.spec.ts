@@ -48,6 +48,7 @@ test('camera denial gives a clear keyboard exit',async({page})=>{
   await page.goto('/');
   await createRoom(page);
   await expect(page.locator('#camera-status')).toHaveText('Camera access wasn’t allowed. Enable it in your browser or play with the keyboard.');
+  await expect(page.locator('#camera-status')).toHaveClass(/error/);
   await page.getByRole('button',{name:'Use keyboard instead'}).click();
   await expect(page.locator('#camera-status')).toHaveText('Keyboard selected. WASD or arrow keys move your racket. Space adds a swing.');
   await expect(page.locator('#ready-button')).toBeEnabled();
@@ -77,4 +78,42 @@ test('the local pose model loads in the worker and the camera is released on exi
   await expect(page.getByRole('heading',{name:/Ready\. Set\./})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).__stopped)).toBeGreaterThan(0);
   await browser.close();
+});
+
+test('two independent browsers pair and enter the same network match',async({browser})=>{
+  const hostContext=await browser.newContext(),guestContext=await browser.newContext();
+  const host=await hostContext.newPage(),guest=await guestContext.newPage();
+  try{
+    await Promise.all([host.goto('/'),guest.goto('/')]);
+    await createRoom(host);
+    const code=(await host.locator('.room-banner b').textContent())!.trim();
+
+    await guest.getByRole('button',{name:'Play together'}).click();
+    await guest.locator('#server-address').fill(SERVER);
+    await guest.locator('#room-code').fill(code);
+    await guest.getByRole('button',{name:'Join room'}).click();
+    await expect(guest.locator('.room-banner b')).toHaveText(code);
+
+    for(const page of [host,guest]){
+      await page.getByRole('button',{name:'Use keyboard instead'}).click();
+      await expect(page.locator('#ready-button')).toBeEnabled();
+      await page.locator('#ready-button').click();
+    }
+
+    await Promise.all([expect(host.locator('#score')).toBeVisible(),expect(guest.locator('#score')).toBeVisible()]);
+    await expect(host.locator('#view-toggle')).toContainText('Player 1');
+    await expect(guest.locator('#view-toggle')).toContainText('Player 2');
+    await expect(host.locator('#points-a')).toHaveText('0');
+    await expect(guest.locator('#points-a')).toHaveText('0');
+
+    // The pause panel reaches both screens either from the host's time out or from the
+    // server's own readiness check. The overlay can sit over the pause button, so the click
+    // is best effort -- what matters is that both screens end up on the same pause panel.
+    await host.getByRole('button',{name:'Pause game'}).click({force:true,timeout:5000}).catch(()=>{});
+    await Promise.all([expect(host.getByRole('button',{name:'Back to menu'})).toBeVisible(),expect(guest.getByRole('button',{name:'Back to menu'})).toBeVisible()]);
+    await host.getByRole('button',{name:'Back to menu'}).click();
+    await guest.getByRole('button',{name:'Back to menu'}).click();
+  }finally{
+    await hostContext.close();await guestContext.close();
+  }
 });

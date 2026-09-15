@@ -1,6 +1,7 @@
 import {io,type Socket} from 'socket.io-client';
 import {Game,type RacketInput,type GameEvent} from './engine';
 import type {Snapshot} from '@rally/shared/protocol';
+import {CONFIG} from '@rally/shared/config';
 export type {Snapshot};
 export class Network{
  socket:Socket|null=null;side=0;code='';latest:Snapshot|null=null;connected=false;error='';lastReceived=0;rtt=0;addresses:string[]=[];
@@ -23,7 +24,7 @@ export class Network{
  }
  send(input:RacketInput,ready:boolean){if(this.connected)this.socket?.volatile.emit('input',{...input,ready});}
  sample(now:number):Game|null{
-  if(!this.latest)return null;const game=Object.assign(new Game(),this.latest.game);const target=now-50;
+  if(!this.latest)return null;const game=Object.assign(new Game(),this.latest.game);const target=now-CONFIG.NETWORK_INTERPOLATION_MS;
   const a=[...this.buffer].reverse().find(v=>v.time<=target),b=this.buffer.find(v=>v.time>target);
   if(a&&b){const alpha=Math.min(1,(target-a.time)/(b.time-a.time));game.balls=this.latest.game.balls.map((ball,i)=>{const old=a.data.game.balls[i],next=b.data.game.balls[i];if(!old||!next||old.lastSide!==next.lastSide||Math.abs(old.z-next.z)>1)return{...ball};return{...ball,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha,z:old.z+(next.z-old.z)*alpha};});game.rackets=this.latest.game.rackets.map((r,i)=>{const old=a.data.game.rackets[i],next=b.data.game.rackets[i];return{...r,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha};});}
   else{game.rackets=game.rackets.map(r=>({...r}));game.balls=game.balls.map(b=>({...b}));}

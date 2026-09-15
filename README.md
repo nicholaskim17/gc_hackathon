@@ -136,6 +136,20 @@ npm run build       # production client bundle
 `npm run test:e2e` needs browsers once: `npx playwright install chromium`. It starts its
 own client on 5174 and its own server on 3101, so it will not disturb a running demo.
 
+### Two-laptop rehearsal
+
+Before presenting, test the actual hardware rather than relying only on the automated
+suite:
+
+1. Put both laptops on the same phone hotspot or trusted Wi-Fi and turn off VPNs.
+2. From the second laptop, open `http://<host-ip>:3001/health` and confirm it returns
+   an `ok` response.
+3. Run <http://localhost:5173/vision-smoke.html> on both laptops.
+4. Calibrate both cameras and play for at least two minutes with the laptops back to back.
+5. Open <http://localhost:5173/?debug=1>, press `D`, and check that CV FPS stays near
+   30 and LAN RTT remains stable.
+6. Rehearse one camera retry, one keyboard fallback, and one browser refresh.
+
 ---
 
 ## Troubleshooting
