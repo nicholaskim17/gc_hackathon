@@ -1,198 +1,164 @@
-# Rally — Perspective Pong
+# Rally
 
-A two-laptop, webcam-controlled ping-pong game. Each laptop faces one player, tracks
-that player's body with MediaPipe Pose, turns their hand into a racket, and renders the
-same authoritative rally from that player's end of the table. First to 7 points.
+Rally is a two-player table-tennis game for two laptops placed back to back. Each
+laptop uses its own webcam to track one player and turns that player's hand into a
+virtual racket. The server keeps both screens on the same match state. Camera video
+stays on the laptop that captured it; only racket input is sent over the network.
 
-Full design and implementation spec: [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md).
+## Requirements
 
-- **No API keys, no accounts, no cloud.** The pose model and WebAssembly runtime are
-  served from the app itself; the only network needed is between the two laptops.
-- **Webcam frames never leave the laptop.** Only derived racket input is sent.
+- Node.js 24 or newer
+- Chrome
+- Two laptops on the same Wi-Fi network or phone hotspot
+- A webcam on each laptop for camera mode
 
----
+Keyboard mode is available without a webcam.
 
-## Install (both laptops)
+## Install
 
-Requires **Node.js 24+** and current **Chrome**.
+Run this on both laptops:
 
 ```bash
 npm install
 ```
 
-`postinstall` copies the MediaPipe model and WASM runtime into `apps/client/public/`,
-so the game does not depend on conference Wi-Fi at demo time.
+This also copies the local pose model and WebAssembly files into the client so the
+game can run without downloading them during a demo.
 
----
+## Run a two-laptop match
 
-## Run
-
-### Host laptop (runs the game server *and* its own client)
+On the host laptop:
 
 ```bash
 npm run dev
 ```
 
-This starts the authoritative server on port **3001** and the client on **5173**. The
-server prints the address the other laptop needs:
+Open `http://localhost:5173` on the host. The server prints a network address such as
+`http://192.168.1.10:3001`. The other laptop will use that address.
 
-```
-Rally multiplayer server: http://localhost:3001
-Teammate server address: http://192.168.1.123:3001
-```
-
-Open <http://localhost:5173> on the host.
-
-### Second laptop (client only)
+On the second laptop:
 
 ```bash
 npm run dev:client
 ```
 
-Open <http://localhost:5173>, then enter the host's **Teammate server address** in the
-*Game server address* field.
+Open `http://localhost:5173`, choose **Play together**, enter the host's server address,
+and join the room code created by the host.
 
-> Always open each client on its own `localhost`. Browsers only grant webcam access in a
-> secure context, and a plain `http://192.168.x.x` page is not one — so do **not** serve
-> the second laptop's page from the host.
+Both players then:
 
-### Pairing
+1. Allow camera access.
+2. Stand far enough back for the shoulders, elbows, and wrists to be visible.
+3. Raise the playing hand until it is selected.
+4. Lower the hand to a comfortable neutral position.
+5. Press **Ready to rally**.
 
-1. On one laptop press **Play together**, confirm the server address, press **Create a room**.
-2. A five-character room code appears. Enter it on the other laptop and press **Join room**.
-3. Both players calibrate, then press **Ready to rally**.
+Keep each client open on its own `localhost` URL. This lets Chrome grant camera access
+while the Socket.IO connection goes to the host's network address.
 
-The server hosts one table at a time. To start a fresh one, press **Leave room** first.
-
-### Camera permissions
-
-Chrome asks once per laptop — choose **Allow**. If Chrome also asks for permission to
-find devices on the local network, allow that too. To change it later: the camera icon in
-the address bar, or Chrome Settings → Privacy and security → Site settings → Camera.
-
-### Calibration
-
-Stand far enough back that your shoulders, elbows and wrists are visible, then:
-
-1. **Step into view** — hold still until your shoulders register.
-2. **Raise your playing hand** — hold it above your shoulder; that picks your hand.
-3. **Lower your hand comfortably** — this becomes your racket's neutral position.
-
----
-
-## Playing without a camera
-
-Handy for testing alone, or if a webcam fails mid-demo.
-
-- **Try without camera** — one keyboard, practice against the house.
-- **Two players, one keyboard** — local duo on a single laptop.
-- **Use keyboard instead** — switch mid-setup or from the pause menu, keeping the room.
+## Controls
 
 | Action | Player 1 | Player 2 |
 | --- | --- | --- |
 | Move racket | `W` `A` `S` `D` | Arrow keys |
 | Swing | `Space` | `Enter` |
 
-`Esc` pauses, `M` mutes.
+`Esc` pauses the match. `M` mutes or unmutes sound.
 
----
+The home screen also includes **Try without camera** for solo practice and **Two
+players, one keyboard** for local play.
 
-## Debug / simulation mode
+## Power-ups
 
-Append `?debug=1` (for example <http://localhost:5173/?debug=1>) for a simulator panel
-with live telemetry: FPS, CV FPS, socket state, RTT, racket position, wrist speed, elbow
-angle, ball position and active power-ups.
+- **Big Racket** temporarily increases the racket size.
+- **Smash** makes the next successful return faster.
+- **Shield** saves one missed return.
+- **Giga Ball** temporarily makes the ball larger.
+- **Decoy Ball** creates a temporary copy of the ball.
+
+Power-ups come from the meter or from the glowing targets on the table.
+
+## Development commands
+
+```bash
+npm run dev          # Start the client and multiplayer server
+npm run dev:client   # Start only the client
+npm run typecheck    # Check client and server TypeScript
+npm test             # Run unit tests
+npm run test:e2e     # Run Playwright browser tests
+npm run build        # Build the client for production
+```
+
+The end-to-end tests start their own client on port `5174` and server on port `3101`.
+Install the test browser once with:
+
+```bash
+npx playwright install chromium
+```
+
+## Debug mode
+
+Add `?debug=1` to the client URL:
+
+```text
+http://localhost:5173/?debug=1
+```
+
+Press `D` to show the simulator panel. It reports frame rate, pose tracking rate,
+network round-trip time, racket state, and ball state.
+
+Useful debug keys:
 
 | Key | Action |
 | --- | --- |
-| `D` | Show/hide the panel |
-| Mouse | Drive the racket directly |
-| `Space` | Serve / reset the ball |
-| `1` `2` `3` | Grant Big Racket / Smash / Shield |
+| `Space` | Serve or reset the ball |
+| `1` to `5` | Activate a power-up |
 | `P` | Spawn a table target |
 | `7` | Award a point |
 | `R` | Reset the round |
 
-The power and score tools apply to local practice only — the server stays authoritative
-in a networked match. Keep the panel hidden during the real presentation.
+Debug scoring and power-ups are for local practice only. The server remains
+authoritative in a networked match.
 
-### Vision diagnostic
-
-<http://localhost:5173/vision-smoke.html> loads the real model in the real game worker and
-runs one generated frame, with no camera involved. Use it to separate "the model is
-broken" from "the camera is broken". Dev server only; it is not part of the build.
-
----
-
-## Checks
-
-```bash
-npm run typecheck   # both client and server
-npm test            # engine, pose and room unit tests
-npm run test:e2e    # Playwright: gameplay, camera denial, layout, real model load
-npm run build       # production client bundle
-```
-
-`npm run test:e2e` needs browsers once: `npx playwright install chromium`. It starts its
-own client on 5174 and its own server on 3101, so it will not disturb a running demo.
-
-### Two-laptop rehearsal
-
-Before presenting, test the actual hardware rather than relying only on the automated
-suite:
-
-1. Put both laptops on the same phone hotspot or trusted Wi-Fi and turn off VPNs.
-2. From the second laptop, open `http://<host-ip>:3001/health` and confirm it returns
-   an `ok` response.
-3. Run <http://localhost:5173/vision-smoke.html> on both laptops.
-4. Calibrate both cameras and play for at least two minutes with the laptops back to back.
-5. Open <http://localhost:5173/?debug=1>, press `D`, and check that CV FPS stays near
-   30 and LAN RTT remains stable.
-6. Rehearse one camera retry, one keyboard fallback, and one browser refresh.
-
----
+The vision diagnostic is available at
+`http://localhost:5173/vision-smoke.html`. It loads the real tracking worker and pose
+model without requiring a camera.
 
 ## Troubleshooting
 
-**`npm run dev` exits immediately.**
-Almost always a server left running from an earlier session still holding port 3001. The
-server now says so and names the fix; `concurrently -k` stops the client too, which is why
-the whole command appears to die. Clear it with `lsof -ti tcp:3001 | xargs kill`, or start
-on another port with `PORT=3002 npm run dev` and give the other laptop the new address.
-If npm instead says it cannot find package.json, you are not in the project folder — `cd`
-into the repo first.
+### `npm run dev` exits because a port is in use
 
-**Camera permission was denied.**
-The setup screen says so and offers **Use keyboard instead**, which keeps you in the room.
-To re-grant, use the camera icon in Chrome's address bar, reload, then **Recalibrate camera**.
+An older dev process is probably still running. Check the listeners:
 
-**Motion tracking won't start.**
-Open the vision diagnostic above. If it fails there, the model or WASM runtime is the
-problem, not your webcam — re-run `npm install` to restore `apps/client/public/wasm/` and
-`apps/client/public/models/`. The worker tries the GPU delegate first and falls back to
-CPU on its own, so a GPU failure alone should not stop the game.
+```bash
+lsof -nP -iTCP:3001 -sTCP:LISTEN
+lsof -nP -iTCP:5173 -sTCP:LISTEN
+```
 
-*If you are changing this code:* MediaPipe's WASM runtime is classic Emscripten output and
-must be evaluated in sloppy mode. The worker loads it through a `self.import` hook that
-fetches and runs it via indirect eval, because a module worker's `importScripts()` throws
-and MediaPipe's own fallback would evaluate it as an ES module — which fails with
-`ReferenceError: custom_dbg is not defined`. Don't remove that hook.
+Stop a stale process by its PID, then run `npm run dev` again. To use another server
+port:
 
-**The second laptop can't reach the server.**
-Check both laptops are on the same Wi-Fi or hotspot, and that no VPN is active. Use the
-exact address the server printed, including `http://` and `:3001`. Confirm the server is
-reachable by opening `http://<host-ip>:3001/health` — it should return `{"ok":true,...}`.
+```bash
+PORT=3002 npm run dev
+```
 
-**Windows Firewall prompt.**
-When Node asks to communicate on private networks, choose **Allow**. If it was dismissed,
-allow Node.js for private networks in Windows Defender Firewall settings.
+Give the other laptop the new server address, including `:3002`.
 
-**Tracking is jittery or drops out.**
-Improve front lighting and avoid a bright window behind you. Step back so your shoulders
-and hips stay in frame, and keep your playing arm unobstructed. Then **Recalibrate camera**.
-If it is still unstable, the keyboard path is always one click away.
+### The second laptop cannot connect
 
-**A player disconnected or refreshed.**
-The match pauses rather than scoring against the missing player. Their seat is held for
-about a minute and reclaimed automatically by the same browser, so a refresh is safe.
-Both players must be ready again to resume.
+Check that both laptops are on the same network and that no VPN is active. Open
+`http://<host-ip>:3001/health` on the second laptop. A working server returns JSON with
+`"ok": true`.
+
+### Camera access or tracking fails
+
+Use the camera icon in Chrome's address bar to re-enable permission, then choose
+**Recalibrate camera**. Improve the lighting, avoid a bright window behind the player,
+and step back until the upper body and playing arm fit in frame. **Use keyboard instead**
+is available if the camera is unavailable.
+
+### The game feels jittery
+
+Use the debug panel to check CV FPS and network RTT. Both should remain stable on a
+local network. Improve lighting and reduce background motion first. Keyboard mode can
+help determine whether a problem comes from tracking or the network.
