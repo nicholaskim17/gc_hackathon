@@ -52,7 +52,7 @@ export class Game{
   const total=Math.hypot(b.vx,b.vy,b.vz);if(total>C.MAX_BALL_SPEED){const f=C.MAX_BALL_SPEED/total;b.vx*=f;b.vy*=f;b.vz*=f;}
   b.bounces=0;b.lastSide=side;b.netCooldown=0;b.smash=smash;delete this.playerEffects[side].smash;
   this.rally++;this.best=Math.max(this.best,this.rally);this.score+=10;r.impact=1;this.shake=smash?.09:.028;
-  this.burst(b.x,b.y,b.z,side===0?'#ff825f':'#62d7ff',smash?95:38,smash?1.7:1);const hitId=String(++this.hitCounter);this.events.push({type:'hit',side,hitId,inputSequence:r.sequence??0,accuracy});
+  this.burst(b.x,b.y,b.z,side===0?'#ff9a76':'#8ae5ff',smash?38:16,smash ? .95 : .5);const hitId=String(++this.hitCounter);this.events.push({type:'hit',side,hitId,inputSequence:r.sequence??0,accuracy});
   if(saved){this.playerStats[side].lastGrade='SAVED';this.playerStats[side].gradeLife=1.4;return;}
   this.pendingGrades.push({hitId,side,due:this.elapsed+C.FORM_AFTER_MS/1000,accuracy,timing:clamp(1-(r.swingAge??1)/.26,0,1),speed:clamp((r.speed??0)/2.3,0,1),extension:clamp(r.extension??.7,0,1),mx:r.motionX??0,my:r.motionY??0});
  }
