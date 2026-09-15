@@ -64,6 +64,12 @@ test('theme, paddle, and table audio samples are served locally',async({request}
   }
 });
 
+test('announcer voice lines are served locally',async({request})=>{
+  for(const name of ['shield','saved','what-a-save','smash','ready-go','okay','perfect','big-racket','miss','giant-ball','decoy','good']){
+    const response=await request.get(`/audio/voice-${name}.m4a`);expect(response.ok()).toBeTruthy();expect((await response.body()).length).toBeGreaterThan(20000);
+  }
+});
+
 test('the local pose model loads in the worker and the camera is released on exit',async({playwright})=>{
   const browser=await playwright.chromium.launch({args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
   const context=await browser.newContext({permissions:['camera']});const page=await context.newPage();

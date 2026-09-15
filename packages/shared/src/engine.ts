@@ -53,7 +53,7 @@ export class Game{
   b.bounces=0;b.lastSide=side;b.netCooldown=0;b.smash=smash;delete this.playerEffects[side].smash;
   this.rally++;this.best=Math.max(this.best,this.rally);this.score+=10;r.impact=1;this.shake=smash?.09:.028;
   this.burst(b.x,b.y,b.z,side===0?'#ff9a76':'#8ae5ff',smash?38:16,smash ? .95 : .5);const hitId=String(++this.hitCounter);this.events.push({type:'hit',side,hitId,inputSequence:r.sequence??0,accuracy});
-  if(saved){this.playerStats[side].lastGrade='SAVED';this.playerStats[side].gradeLife=1.4;return;}
+  if(saved){this.playerStats[side].lastGrade='SAVED';this.playerStats[side].gradeLife=1.4;this.events.push({type:'grade',side,grade:'SAVED'});return;}
   this.pendingGrades.push({hitId,side,due:this.elapsed+C.FORM_AFTER_MS/1000,accuracy,timing:clamp(1-(r.swingAge??1)/.26,0,1),speed:clamp((r.speed??0)/2.3,0,1),extension:clamp(r.extension??.7,0,1),mx:r.motionX??0,my:r.motionY??0});
  }
   confirmForm(hitId:string,side:number,score:number){const q=this.pendingGrades.find(q=>q.hitId===hitId&&q.side===side);if(!q||!Number.isFinite(score))return false;this.pendingGrades=this.pendingGrades.filter(v=>v!==q);this.awardGrade(side,clamp(Math.round(score),0,100));return true;}
