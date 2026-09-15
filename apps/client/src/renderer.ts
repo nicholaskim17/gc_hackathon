@@ -1,31 +1,18 @@
 import * as THREE from 'three';
-import { createElement } from 'react';
-import { createRoot, useFrame, type RootState } from '@react-three/fiber';
-
-/** React Three Fiber owns scene mounting and frame scheduling. */
-function CourtScene({ scene, composer }: { scene: THREE.Scene; composer: EffectComposer }) {
-  useFrame(() => composer.render(), 1);
-  return createElement('primitive', { object: scene, dispose: null });
-}
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Game, POWER, TABLE_Y, type Vec3 } from './engine';
 const material=(color:THREE.ColorRepresentation,roughness=.55,metalness=.05)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 export class Renderer {
-  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(43,1,.05,100);gl:THREE.WebGLRenderer;composer:EffectComposer;bloom:UnrealBloomPass;
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(43,1,.05,100);gl:THREE.WebGLRenderer;
   rackets:THREE.Group[]=[];ballMeshes:THREE.Mesh[]=[];trails:THREE.Mesh[][]=[];ballShadows:THREE.Mesh[]=[];boxMeshes:THREE.Group[]=[];particles:THREE.InstancedMesh;
-  root:ReturnType<typeof createRoot>;fiberState:RootState|null=null;disposed=false;shields:THREE.Mesh[]=[];powerLabels:THREE.Sprite[]=[];
-  ring:THREE.Mesh;dust:THREE.Points;labels:THREE.Sprite[]=[];hitRings:THREE.Mesh[]=[];temp=new THREE.Object3D();width=0;height=0;viewMode=0;frame=0;
+  disposed=false;shields:THREE.Mesh[]=[];powerLabels:THREE.Sprite[]=[];
+  ring:THREE.Mesh;dust:THREE.Points;labels:THREE.Sprite[]=[];hitRings:THREE.Mesh[]=[];temp=new THREE.Object3D();targetPosition=new THREE.Vector3();look=new THREE.Vector3();particleColor=new THREE.Color();width=0;height=0;viewMode=0;frame=0;pixelRatio=Math.min(window.devicePixelRatio||1,1.25);reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
   constructor(public canvas:HTMLCanvasElement){
-    this.gl=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
-    this.gl.setPixelRatio(Math.min(devicePixelRatio,1.6));this.gl.shadowMap.enabled=true;this.gl.shadowMap.type=THREE.PCFShadowMap;
+    this.gl=new THREE.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance'});
+    this.gl.setPixelRatio(this.pixelRatio);this.gl.shadowMap.enabled=false;
     this.gl.toneMapping=THREE.ACESFilmicToneMapping;this.gl.toneMappingExposure=1.05;this.scene.background=new THREE.Color('#05090f');this.scene.fog=new THREE.FogExp2('#05090f',.045);
-    this.composer=new EffectComposer(this.gl);this.composer.addPass(new RenderPass(this.scene,this.camera));this.bloom=new UnrealBloomPass(new THREE.Vector2(800,600),.32,.6,.9);this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());
     this.scene.add(new THREE.HemisphereLight('#b7d9ff','#29354a',1.7));
-    const key=new THREE.SpotLight('#e1efff',75,25,Math.PI/5,.55,1.2);key.position.set(1,7,2);key.target.position.set(0,0,0);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.bias=-.0002;key.shadow.normalBias=.015;this.scene.add(key,key.target);
+    const key=new THREE.SpotLight('#e1efff',75,25,Math.PI/5,.55,1.2);key.position.set(1,7,2);key.target.position.set(0,0,0);this.scene.add(key,key.target);
     const fill=new THREE.PointLight('#50a2ff',18,12,1.5);fill.position.set(-3,3,-2);this.scene.add(fill);
     const warm=new THREE.PointLight('#ff9271',15,11,1.5);warm.position.set(3,2.5,3);this.scene.add(warm);
     const back=new THREE.DirectionalLight('#e4f1ff',1.3);back.position.set(0,3,-5);this.scene.add(back);
@@ -35,19 +22,17 @@ export class Renderer {
       const label=this.label(i===0?'PLAYER 01':'PLAYER 02',i===0?'#ffbda6':'#9ddffa',22);label.scale.set(1.08,.19,1);this.labels.push(label);this.scene.add(label);
       const ring=new THREE.Mesh(new THREE.RingGeometry(.2,.23,40),new THREE.MeshBasicMaterial({color:i===0?'#ffb490':'#a7efff',transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));this.hitRings.push(ring);this.scene.add(ring);
     }
-    const ballGeometry=new THREE.SphereGeometry(.065,24,16);
+    const ballGeometry=new THREE.SphereGeometry(.065,16,10);
     for(let i=0;i<3;i++){
       const ball=new THREE.Mesh(ballGeometry,new THREE.MeshStandardMaterial({color:'#fff9eb',emissive:'#ffdaa0',emissiveIntensity:.28,roughness:.35}));ball.castShadow=true;this.ballMeshes.push(ball);this.scene.add(ball);
-      const trail:THREE.Mesh[]=[];for(let n=0;n<26;n++){const m=new THREE.Mesh(ballGeometry,new THREE.MeshBasicMaterial({color:'#b7e5ff',transparent:true,opacity:.25*(1-n/26),depthWrite:false}));trail.push(m);this.scene.add(m);}this.trails.push(trail);
+      const trail:THREE.Mesh[]=[];for(let n=0;n<12;n++){const m=new THREE.Mesh(ballGeometry,new THREE.MeshBasicMaterial({color:'#b7e5ff',transparent:true,opacity:.22*(1-n/12),depthWrite:false}));trail.push(m);this.scene.add(m);}this.trails.push(trail);
       const shadow=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshBasicMaterial({map:this.shadowTexture(),transparent:true,depthWrite:false,opacity:.5}));shadow.rotation.x=-Math.PI/2;this.ballShadows.push(shadow);this.scene.add(shadow);
     }
     for(let i=0;i<3;i++){const box=this.makeBox();this.boxMeshes.push(box);this.scene.add(box);}
-    this.particles=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.85}),200);this.particles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.particles.frustumCulled=false;this.scene.add(this.particles);
+    this.particles=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.85}),120);this.particles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.particles.frustumCulled=false;this.scene.add(this.particles);
     const dustGeo=new THREE.BufferGeometry(),positions=new Float32Array(330);for(let i=0;i<positions.length;i+=3){positions[i]=(Math.random()-.5)*18;positions[i+1]=Math.random()*6;positions[i+2]=(Math.random()-.5)*18;}dustGeo.setAttribute('position',new THREE.BufferAttribute(positions,3));
     this.dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:'#94c5e5',size:.012,transparent:true,opacity:.38,depthWrite:false}));this.scene.add(this.dust);
     this.ring=new THREE.Mesh(new THREE.RingGeometry(4.7,4.715,120),new THREE.MeshBasicMaterial({color:'#325976',transparent:true,opacity:.5,side:THREE.DoubleSide}));this.ring.rotation.x=-Math.PI/2;this.ring.position.y=.011;this.scene.add(this.ring);
-    this.root=createRoot(canvas);
-    void this.root.configure({gl:this.gl,camera:this.camera,frameloop:'never',dpr:Math.min(devicePixelRatio,1.6),size:{width:canvas.clientWidth||800,height:canvas.clientHeight||500,top:0,left:0},onCreated:state=>{this.fiberState=state;}}).then(()=>{if(!this.disposed)this.root.render(createElement(CourtScene,{scene:this.scene,composer:this.composer}));});
   }
   box(w:number,h:number,d:number,mat:THREE.Material,x:number,y:number,z:number,r=.025){const mesh=new THREE.Mesh(new RoundedBoxGeometry(w,h,d,2,r),mat);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;this.scene.add(mesh);return mesh;}
   glow(color:string,intensity=2){return new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:intensity,roughness:.3});}
@@ -124,14 +109,14 @@ export class Renderer {
   project(p:Vec3){const v=new THREE.Vector3(p.x,p.y,p.z).project(this.camera);return {x:(v.x*.5+.5)*100,y:(-v.y*.5+.5)*100,visible:v.z<1&&v.z>-1};}
   draw(g:Game,t:number,demo=false){
     const width=this.canvas.clientWidth,height=this.canvas.clientHeight;if(!width||!height)return;
-    if(width!==this.width||height!==this.height){this.width=width;this.height=height;this.fiberState?.setSize(width,height);this.gl.setSize(width,height,false);this.composer.setSize(width,height);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();}
-    let targetPosition:THREE.Vector3,look=new THREE.Vector3(0,1.15,-.25);
-    if(demo){targetPosition=new THREE.Vector3(5.6+Math.sin(t*.1)*.5,4.15,7.7);look.set(0,.95,0);}
-    else if(this.viewMode===2){targetPosition=new THREE.Vector3(6.1,4.5,6.8);look.set(0,1,0);}
-    else if(this.viewMode===1){targetPosition=new THREE.Vector3(g.rackets[1].x*.1,2.65,-6.3);look.set(0,1.1,.15);}
-    else {targetPosition=new THREE.Vector3(g.rackets[0].x*.1,2.65,6.3);}
+    if(width!==this.width||height!==this.height){this.width=width;this.height=height;this.gl.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();}
+    const targetPosition=this.targetPosition,look=this.look.set(0,1.15,-.25);
+    if(demo){targetPosition.set(5.6+Math.sin(t*.1)*.5,4.15,7.7);look.set(0,.95,0);}
+    else if(this.viewMode===2){targetPosition.set(6.1,4.5,6.8);look.set(0,1,0);}
+    else if(this.viewMode===1){targetPosition.set(g.rackets[1].x*.1,2.65,-6.3);look.set(0,1.1,.15);}
+    else targetPosition.set(g.rackets[0].x*.1,2.65,6.3);
     if(!this.frame++)this.camera.position.copy(targetPosition);else this.camera.position.lerp(targetPosition,.08);
-    const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;if(g.shake&&!reduce)this.camera.position.x+=Math.sin(t*100)*g.shake;
+    if(g.shake&&!this.reducedMotion)this.camera.position.x+=Math.sin(t*100)*g.shake;
     this.camera.lookAt(look);
     const own=demo||this.viewMode===2?-1:this.viewMode===1?1:0;
     this.rackets.forEach((r,i)=>{const p=g.rackets[i];r.position.set(p.x,p.y,p.z);r.rotation.set(-.08+(i===0?-1:1)*(p.swing*.28+p.impact*.16),p.tilt*.6,p.tilt*.6-(i===0?.13:-.13));r.scale.setScalar(g.racketScaleFor(i));r.scale.z*=1-p.impact*.12;
@@ -145,12 +130,11 @@ export class Renderer {
       mesh.position.set(b.x,b.y,b.z);mesh.scale.setScalar(g.radius/.065);mesh.rotation.x=t*3;mesh.rotation.z=t*2;
       const mat=mesh.material as THREE.MeshStandardMaterial;mat.color.set(b.smash?'#ffb348':'#fff9eb');mat.emissive.set(b.smash?'#ff6a19':'#ffdda1');mat.emissiveIntensity=b.smash?1.3:.3;
       const shadow=this.ballShadows[i];shadow.position.set(b.x,TABLE_Y+.008,b.z);shadow.visible=Math.abs(b.x)<1.65&&Math.abs(b.z)<2.65;shadow.scale.setScalar(1+Math.max(0,b.y-TABLE_Y)*.5);(shadow.material as THREE.MeshBasicMaterial).opacity=.6/(1+Math.max(0,b.y-TABLE_Y));
-      this.trails[i].forEach((m,j)=>{const p=b.trail[j];m.visible=!!p&&!reduce;if(p){m.position.set(p.x,p.y,p.z);m.scale.setScalar((1-j/28)*g.radius/.065);(m.material as THREE.MeshBasicMaterial).color.set(b.smash?'#ff7838':'#bbddff');}});
+      this.trails[i].forEach((m,j)=>{const p=b.trail[j];m.visible=!!p&&!this.reducedMotion;if(p){m.position.set(p.x,p.y,p.z);m.scale.setScalar((1-j/12)*g.radius/.065);(m.material as THREE.MeshBasicMaterial).color.set(b.smash?'#ff7838':'#bbddff');}});
     });
     this.boxMeshes.forEach((mesh,i)=>{const b=g.boxes[i];mesh.visible=!!b;if(b){mesh.position.set(b.x,TABLE_Y+.022,b.z);mesh.scale.setScalar(1+Math.sin(t*2+b.phase)*.04);if(mesh.userData.power!==b.power){const old=this.powerLabels[i];(old.material as THREE.SpriteMaterial).map?.dispose();old.material.dispose();mesh.remove(old);const label=this.label(POWER[b.power].name.toUpperCase(),POWER[b.power].color,31);label.scale.set(.85,.21,1);label.position.y=.3;mesh.add(label);this.powerLabels[i]=label;mesh.userData.power=b.power;}}});
-    this.particles.count=Math.min(200,g.particles.length);g.particles.slice(0,200).forEach((p,i)=>{this.temp.position.set(p.x,p.y,p.z);this.temp.rotation.set(t+i,t*2,i);this.temp.scale.setScalar(p.size*Math.min(1,p.life*3));this.temp.updateMatrix();this.particles.setMatrixAt(i,this.temp.matrix);this.particles.setColorAt(i,new THREE.Color(p.color));});this.particles.instanceMatrix.needsUpdate=true;if(this.particles.instanceColor)this.particles.instanceColor.needsUpdate=true;
-    this.dust.rotation.y=t*.005;this.bloom.strength=.3;
-    this.fiberState?.advance(t,true);
+    this.particles.count=Math.min(120,g.particles.length);g.particles.slice(0,120).forEach((p,i)=>{this.temp.position.set(p.x,p.y,p.z);this.temp.rotation.set(t+i,t*2,i);this.temp.scale.setScalar(p.size*Math.min(1,p.life*3));this.temp.updateMatrix();this.particles.setMatrixAt(i,this.temp.matrix);this.particles.setColorAt(i,this.particleColor.set(p.color));});this.particles.instanceMatrix.needsUpdate=true;if(this.particles.instanceColor)this.particles.instanceColor.needsUpdate=true;
+    this.dust.rotation.y=t*.005;this.gl.render(this.scene,this.camera);
   }
-  dispose(){this.disposed=true;this.root.unmount();this.scene.traverse(o=>{const m=o as THREE.Mesh;if(m.geometry)m.geometry.dispose();if(m.material){const mats=Array.isArray(m.material)?m.material:[m.material];for(const mat of mats){for(const value of Object.values(mat))if(value instanceof THREE.Texture)value.dispose();mat.dispose();}}});this.composer.dispose();this.gl.dispose();this.gl.forceContextLoss();}
+  dispose(){this.disposed=true;this.scene.traverse(o=>{const m=o as THREE.Mesh;if(m.geometry)m.geometry.dispose();if(m.material){const mats=Array.isArray(m.material)?m.material:[m.material];for(const mat of mats){for(const value of Object.values(mat))if(value instanceof THREE.Texture)value.dispose();mat.dispose();}}});this.gl.dispose();this.gl.forceContextLoss();}
 }

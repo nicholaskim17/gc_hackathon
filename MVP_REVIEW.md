@@ -17,11 +17,13 @@ The software MVP is implemented and the automated suite is green. The architectu
 
 ### Latency
 
-- Increased client input from 30 Hz to 45 Hz.
-- Increased authoritative snapshots from 30 Hz to 45 Hz.
-- Reduced same-room interpolation delay from 50 ms to a configured 35 ms.
+- Increased client input from 30 Hz to 60 Hz.
+- Increased authoritative snapshots from 30 Hz to 60 Hz.
+- Added an 80 ms interpolation buffer so packet arrival variance is smoothed instead of rendered as visible jumps.
+- Added bounded 100 ms extrapolation for short packet gaps.
 - Kept physics at 120 Hz and pose inference at 30 Hz.
 - Kept immediate local paddle rendering so the player's own racket does not wait for a server round trip.
+- Replaced the React Three Fiber render bridge with a direct Three.js render loop, disabled expensive post-processing and shadows, and reduced trail and particle work on every frame.
 
 ### Tracking Reliability
 
@@ -59,8 +61,8 @@ npm run build
 
 Expected results after this implementation:
 
-- Unit tests: 24 passing.
-- Browser tests: 5 passing.
+- Unit tests: 28 passing.
+- Browser tests: 6 passing.
 - Typecheck: passing.
 - Production build: passing.
 
@@ -84,11 +86,12 @@ Use front lighting and avoid bright windows behind either player. If peer-to-pee
 ## Tuning Baseline
 
 ```ts
-INPUT_HZ: 45
-STATE_BROADCAST_HZ: 45
+INPUT_HZ: 60
+STATE_BROADCAST_HZ: 60
 PHYSICS_HZ: 120
 CV_HZ: 30
-NETWORK_INTERPOLATION_MS: 35
+NETWORK_INTERPOLATION_MS: 80
+NETWORK_EXTRAPOLATION_MS: 100
 TRACKING_INIT_TIMEOUT_MS: 15000
 INPUT_TIMEOUT_MS: 1600
 STARTUP_INPUT_TIMEOUT_MS: 6000

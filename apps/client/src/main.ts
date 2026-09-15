@@ -75,7 +75,7 @@ function results(){
 }
 function playEvents(events:GameEvent[]){for(const event of events){if(event.type==='hit')sound.hit(game.rally);if(event.type==='box'){sound.item();announce(`${POWER[event.power!].name}! ${POWER[event.power!].description}`);}if(event.type==='bounce')sound.bounce();if(event.type==='miss')sound.tone(150,.13,'sine',.06);if(event.type==='net')sound.tone(180,.08,'triangle',.045);if(event.type==='grade'&&event.grade==='PERFECT')sound.tone(1047,.1,'sine',.06);}}
 network.onUpdate=(snapshot:Snapshot)=>{
- if(session!=='network')return;game=Object.assign(new Game(),snapshot.game);
+ if(session!=='network')return;if(view!=='game'||snapshot.phase==='results')game=Object.assign(new Game(),snapshot.game);
  if(view==='results'&&snapshot.phase==='lobby'){setup();return;}
  if(view==='setup'&&['countdown','playing','paused'].includes(snapshot.phase)){sound.unlock();renderGame();lastPhase='';}
  if(view==='game'){
