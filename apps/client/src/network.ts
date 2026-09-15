@@ -1,5 +1,5 @@
 import {io,type Socket} from 'socket.io-client';
-import {Game,type RacketInput,type GameEvent} from './engine';
+import {Game,GRAVITY,type RacketInput,type GameEvent} from './engine';
 import type {Snapshot} from '@rally/shared/protocol';
 import {CONFIG} from '@rally/shared/config';
 export type {Snapshot};
@@ -27,7 +27,14 @@ export class Network{
   if(!this.latest)return null;const game=Object.assign(new Game(),this.latest.game);const target=now-CONFIG.NETWORK_INTERPOLATION_MS;
   const a=[...this.buffer].reverse().find(v=>v.time<=target),b=this.buffer.find(v=>v.time>target);
   if(a&&b){const alpha=Math.min(1,(target-a.time)/(b.time-a.time));game.balls=this.latest.game.balls.map((ball,i)=>{const old=a.data.game.balls[i],next=b.data.game.balls[i];if(!old||!next||old.lastSide!==next.lastSide||Math.abs(old.z-next.z)>1)return{...ball};return{...ball,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha,z:old.z+(next.z-old.z)*alpha};});game.rackets=this.latest.game.rackets.map((r,i)=>{const old=a.data.game.rackets[i],next=b.data.game.rackets[i];return{...r,x:old.x+(next.x-old.x)*alpha,y:old.y+(next.y-old.y)*alpha};});}
-  else{game.rackets=game.rackets.map(r=>({...r}));game.balls=game.balls.map(b=>({...b}));}
+  else{
+   // Running past the newest snapshot is normal once latency exceeds the buffer. Carry the
+   // ball forward on its own velocity rather than freezing it on the last known point,
+   // which is what actually reads as stutter.
+   const newest=this.buffer.at(-1),ahead=newest?Math.max(0,Math.min(.25,(target-newest.time)/1000)):0;
+   game.balls=game.balls.map(b=>ahead>0?{...b,x:b.x+b.vx*ahead,y:b.y+b.vy*ahead-.5*GRAVITY*ahead*ahead,z:b.z+b.vz*ahead}:{...b});
+   game.rackets=game.rackets.map(r=>({...r}));
+  }
   return game;
  }
  submitForm(hitId:string,score:number){if(Number.isFinite(score))this.socket?.emit('form_result',{hitId,score:Math.max(0,Math.min(100,score))});}

@@ -21,11 +21,11 @@ export class Renderer {
   ring:THREE.Mesh;dust:THREE.Points;labels:THREE.Sprite[]=[];hitRings:THREE.Mesh[]=[];temp=new THREE.Object3D();width=0;height=0;viewMode=0;frame=0;
   constructor(public canvas:HTMLCanvasElement){
     this.gl=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
-    this.gl.setPixelRatio(Math.min(devicePixelRatio,1.6));this.gl.shadowMap.enabled=true;this.gl.shadowMap.type=THREE.PCFShadowMap;
+    this.gl.setPixelRatio(Math.min(devicePixelRatio,1.25));this.gl.shadowMap.enabled=true;this.gl.shadowMap.type=THREE.PCFShadowMap;
     this.gl.toneMapping=THREE.ACESFilmicToneMapping;this.gl.toneMappingExposure=1.05;this.scene.background=new THREE.Color('#05090f');this.scene.fog=new THREE.FogExp2('#05090f',.045);
-    this.composer=new EffectComposer(this.gl);this.composer.addPass(new RenderPass(this.scene,this.camera));this.bloom=new UnrealBloomPass(new THREE.Vector2(800,600),.32,.6,.9);this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());
+    this.composer=new EffectComposer(this.gl);this.composer.addPass(new RenderPass(this.scene,this.camera));this.bloom=new UnrealBloomPass(new THREE.Vector2(400,300),.32,.6,.9);this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());
     this.scene.add(new THREE.HemisphereLight('#b7d9ff','#29354a',1.7));
-    const key=new THREE.SpotLight('#e1efff',75,25,Math.PI/5,.55,1.2);key.position.set(1,7,2);key.target.position.set(0,0,0);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.bias=-.0002;key.shadow.normalBias=.015;this.scene.add(key,key.target);
+    const key=new THREE.SpotLight('#e1efff',75,25,Math.PI/5,.55,1.2);key.position.set(1,7,2);key.target.position.set(0,0,0);key.castShadow=true;key.shadow.mapSize.set(512,512);key.shadow.bias=-.0002;key.shadow.normalBias=.015;this.scene.add(key,key.target);
     const fill=new THREE.PointLight('#50a2ff',18,12,1.5);fill.position.set(-3,3,-2);this.scene.add(fill);
     const warm=new THREE.PointLight('#ff9271',15,11,1.5);warm.position.set(3,2.5,3);this.scene.add(warm);
     const back=new THREE.DirectionalLight('#e4f1ff',1.3);back.position.set(0,3,-5);this.scene.add(back);

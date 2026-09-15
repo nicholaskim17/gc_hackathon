@@ -124,7 +124,7 @@ function loop(now:number){const dt=Math.min(.05,(now-last)/1000);last=now;
  if(mode==='camera'&&(view==='setup'||view==='game')){tracking.tick(now);updatePreview(now);}else if(view==='setup')updatePreview(now);
  if(session==='network'&&(view==='setup'||view==='game'||view==='results')){
   const input=localInput(dt);const world={...input,x:network.side===1?-input.x:input.x,motionX:network.side===1?-(input.motionX??0):input.motionX,tilt:network.side===1?-input.tilt:input.tilt};
-  if(now-lastSend>1000/CONFIG.INPUT_HZ){sequence++;tracking.associateSequence(sequence);network.send({...world,sequence},ready&&(mode==='keyboard'||tracking.detected(now))&&!document.hidden);lastSend=now;}
+  if(now-lastSend>1000/CONFIG.INPUT_HZ){sequence++;tracking.associateSequence(sequence);network.send({...world,sequence},ready&&(mode==='keyboard'||tracking.detected(now)));lastSend=now;}
   if(now-lastPing>2000){network.ping();lastPing=now;}
   if(view==='game'){
    const sampled=network.sample(now);if(sampled)game=sampled;
@@ -147,7 +147,7 @@ $('home').onclick=()=>view==='game'?pause('Heading back to the menu?'):title();
 $('sound').onclick=()=>{sound.unlock();sound.muted=!sound.muted;$('sound').innerHTML=icon(sound.muted?'mute':'sound');$('sound').setAttribute('aria-label',sound.muted?'Unmute sound':'Mute sound');};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{announce('Fullscreen is unavailable in this browser.');}};
 window.addEventListener('keydown',e=>{if(e.code==='Escape'&&view==='game'&&!paused)pause('Take a breather.');if(e.code==='KeyM'&&!e.repeat&&!['INPUT','TEXTAREA'].includes((e.target as HTMLElement).tagName))$('sound').click();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&view==='game')pause('Take a breather.');});
-window.addEventListener('blur',()=>{if(view==='game'&&session!=='network')pause('Take a breather.');});
+// Losing focus no longer interrupts a rally: over a slow link the auto-pause fired
+// constantly and was more disruptive than a few dropped frames. Pause is manual now.
 window.addEventListener('pagehide',()=>{tracking.stop();network.suspend();});
 title();requestAnimationFrame(loop);
