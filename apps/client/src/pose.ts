@@ -46,7 +46,12 @@ export class PoseInput{
    if(r.progress<1)return finish();this.center={x:this.neutral.reduce((s,p)=>s+p.x,0)/this.neutral.length,y:this.neutral.reduce((s,p)=>s+p.y,0)/this.neutral.length};this.stage='ready';this.previous=null;
   }
   const dt=this.previous?clamp((now-this.previous.time)/1000,.008,.2):1/30;
-  const rawSpeed=this.previous?Math.hypot(nx-this.previous.wristX,ny-this.previous.wristY)/dt:0,alpha=clamp(.5+rawSpeed*.045,.5,.88);
+  // Blend aggressively enough to stay attached to a moving hand while filtering
+  // MediaPipe's small frame-to-frame wrist jitter. The local racket renderer
+  // applies a second frame-rate-independent spring, so this stays fluid without
+  // adding the heavy drag of a long moving average.
+  const rawSpeed=this.previous?Math.hypot(nx-this.previous.wristX,ny-this.previous.wristY)/dt:0;
+  const alpha=clamp(1-Math.exp(-(18+Math.min(rawSpeed*5,18))*dt),.42,.94);
   const x=this.previous?this.previous.wristX+alpha*(nx-this.previous.wristX):nx,y=this.previous?this.previous.wristY+alpha*(ny-this.previous.wristY):ny;
   const vx=this.previous?(x-this.previous.wristX)/dt:0,vy=this.previous?(y-this.previous.wristY)/dt:0,speed=Math.hypot(vx,vy);
   if(speed>.65&&speed>=(this.previous?.wristSpeed??0)*.9)this.lastPeak=now;
