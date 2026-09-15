@@ -9,7 +9,7 @@ stays on the laptop that captured it; only racket input is sent over the network
 
 - Node.js 24 or newer
 - Chrome
-- Two laptops on the same Wi-Fi network or phone hotspot
+- Two laptops that can reach each other over a local network or Tailscale
 - A webcam on each laptop for camera mode
 
 Keyboard mode is available without a webcam.
@@ -56,17 +56,42 @@ Both players then:
 Keep each client open on its own `localhost` URL. This lets Chrome grant camera access
 while the Socket.IO connection goes to the host's network address.
 
-## Controls
+## Networking notes
 
-| Action | Player 1 | Player 2 |
-| --- | --- | --- |
-| Move racket | `W` `A` `S` `D` | Arrow keys |
-| Swing | `Space` | `Enter` |
+The two laptops do not need to share video, but they do need a working path to the
+host laptop's game server. The client connects to the host on TCP port `3001`.
 
-`Esc` pauses the match. `M` mutes or unmutes sound.
+The setup we used was a personal hotspot. Both laptops joined the same hotspot, the
+host ran the server, and the second laptop used the host address printed by the
+server. A normal private Wi-Fi network works the same way.
 
-The home screen also includes **Try without camera** for solo practice and **Two
-players, one keyboard** for local play.
+Guest Wi-Fi is often different. Hotels, schools, offices, and event venues may allow
+every device to reach the internet while blocking devices from reaching one another.
+In that case the second laptop cannot connect to the host, even though both laptops
+show the same Wi-Fi name. Captive portals and VPNs can cause similar problems.
+
+Tailscale is another option when local Wi-Fi is unreliable. Install Tailscale on both
+laptops, sign them into the same tailnet, and start the server on the host. Find the
+host's Tailscale IPv4 address with:
+
+```bash
+tailscale ip -4
+```
+
+On the second laptop, enter `http://<tailscale-ip>:3001` as the game server address.
+The two laptops do not have to be on the same physical Wi-Fi when Tailscale can reach
+both of them. The host firewall still needs to allow Node.js to accept connections.
+
+Before pairing, test the connection from the second laptop by opening one of these
+URLs in Chrome:
+
+```text
+http://<host-lan-ip>:3001/health
+http://<host-tailscale-ip>:3001/health
+```
+
+The working URL returns JSON containing `"ok": true`. If it does not load, fix the
+network path before opening the game.
 
 ## Power-ups
 
@@ -104,21 +129,9 @@ Add `?debug=1` to the client URL:
 http://localhost:5173/?debug=1
 ```
 
-Press `D` to show the simulator panel. It reports frame rate, pose tracking rate,
-network round-trip time, racket state, and ball state.
-
-Useful debug keys:
-
-| Key | Action |
-| --- | --- |
-| `Space` | Serve or reset the ball |
-| `1` to `5` | Activate a power-up |
-| `P` | Spawn a table target |
-| `7` | Award a point |
-| `R` | Reset the round |
-
-Debug scoring and power-ups are for local practice only. The server remains
-authoritative in a networked match.
+The simulator reports frame rate, pose tracking rate, network round-trip time, racket
+state, and ball state. Debug scoring and power-ups are for local practice only. The
+server remains authoritative in a networked match.
 
 The vision diagnostic is available at
 `http://localhost:5173/vision-smoke.html`. It loads the real tracking worker and pose
