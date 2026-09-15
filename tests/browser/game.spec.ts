@@ -66,8 +66,8 @@ test('layout fits desktop and smaller screens',async({page})=>{
   }
 });
 
-test('paddle and table audio samples are served locally',async({request})=>{
-  for(const path of ['/audio/paddle-hit.mp3','/audio/table-bounce.mp3']){
+test('theme, paddle, and table audio samples are served locally',async({request})=>{
+  for(const path of ['/audio/mii-channel.mp3','/audio/paddle-hit.mp3','/audio/table-bounce.mp3']){
     const response=await request.get(path);expect(response.ok()).toBeTruthy();expect(response.headers()['content-type']).toContain('audio/mpeg');expect((await response.body()).length).toBeGreaterThan(5000);
   }
 });
