@@ -34,7 +34,7 @@ export class Game{
  racketScaleFor(side:number){return this.playerEffects[side].mega?C.BIG_RACKET_MULTIPLIER:1;}
  newBall():Ball{const side=this.serveSide,dir=side===0?-1:1,r=this.rackets[side];return{x:r.x,y:1.55,z:dir*-2.5,vx:-r.x*.5,vy:1.4,vz:dir*5.1,trail:[],extra:false,bounces:0,lastSide:side,netCooldown:0,smash:false};}
  burst(x:number,y:number,z:number,color:string,count=28,force=1){for(let i=0;i<count;i++){const a=this.random()*Math.PI*2,elevation=.15+this.random()*.85,s=(1.2+this.random()*4.2)*force;this.particles.push({x,y,z,vx:Math.cos(a)*s*(1-elevation*.3),vy:(.8+this.random()*4.4)*force*elevation,vz:Math.sin(a)*s*(1-elevation*.3),life:.55+this.random()*1.05,color:i%5===0?'#ffffff':color,size:.018+this.random()*.065*force,spin:(this.random()-.5)*18,drag:.35+this.random()*.8});}if(this.particles.length>520)this.particles.splice(0,this.particles.length-520);}
- activate(power:Power,side=0){this.playerEffects[side]={[power]:POWER[power].duration};this.lastPower=power;this.reveal=2.6;if(power==='clone'){this.balls=this.balls.filter(b=>!b.extra);const real=this.balls[0];if(real)this.balls.push({...real,x:clamp(-real.x+(side===0 ? .34 : -.34),-1.45,1.45),vx:-real.vx+(side===0 ? .65 : -.65),vy:real.vy*.92+.35,trail:[],extra:true,smash:false,bounces:0,netCooldown:0,life:C.CLONE_BALL_DURATION});}this.events.push({type:'box',power,side});}
+ activate(power:Power,side=0){this.playerEffects[side]={[power]:POWER[power].duration};this.lastPower=power;this.reveal=1.1;if(power==='clone'){this.balls=this.balls.filter(b=>!b.extra);const real=this.balls[0];if(real)this.balls.push({...real,x:clamp(-real.x+(side===0 ? .34 : -.34),-1.45,1.45),vx:-real.vx+(side===0 ? .65 : -.65),vy:real.vy*.92+.35,trail:[],extra:true,smash:false,bounces:0,netCooldown:0,life:C.CLONE_BALL_DURATION});}this.events.push({type:'box',power,side});}
  updateRackets(dt:number,inputs:RacketInput[]){this.rackets.forEach((r,i)=>{const target=inputs[i],oldX=r.x,oldY=r.y,alpha=1-Math.exp(-C.PADDLE_SMOOTHING*dt);
   r.x+=(clamp(target.x,-C.PADDLE_X_RANGE,C.PADDLE_X_RANGE)-r.x)*alpha;r.y+=(clamp(target.y,C.PADDLE_MIN_Y,C.PADDLE_MAX_Y)-r.y)*alpha;
   r.vx=dt?(r.x-oldX)/dt:0;r.vy=dt?(r.y-oldY)/dt:0;r.swing=clamp(target.swing,0,1);r.tilt=clamp(target.tilt,-.8,.8);
@@ -61,7 +61,7 @@ export class Game{
   const roll=this.random(),grade:Grade=roll<1/3?'OK':roll<2/3?'GREAT':'PERFECT',shownQuality=grade==='PERFECT'?Math.max(C.PERFECT_THRESHOLD,quality):grade==='GREAT'?Math.max(C.GREAT_THRESHOLD,Math.min(C.PERFECT_THRESHOLD-1,quality)):Math.max(C.OK_THRESHOLD,Math.min(C.GREAT_THRESHOLD-1,quality)),points=grade==='PERFECT'?C.POWER_PER_PERFECT:grade==='GREAT'?C.POWER_PER_GREAT:C.POWER_PER_OK,displayGrade=grade==='GREAT'?'GOOD':grade;
   const stats=this.playerStats[side],r=this.rackets[side];stats.lastGrade=grade;stats.gradeLife=1.4;stats.quality=shownQuality;stats.meter+=points;if(grade==='PERFECT')stats.perfect++;if(grade==='GREAT')stats.great++;this.score+=points;
   this.popups.push({x:r.x,y:r.y+.35,z:r.z,text:`${displayGrade} +${points}`,life:1,color:grade==='PERFECT'?'#ffe3a6':'#ffffff'});this.events.push({type:'grade',side,grade});
-  if(grade==='PERFECT'){this.burst(r.x,r.y,r.z,'#ffe077',72,1.35);this.shake=Math.max(this.shake,.045);}
+  if(grade==='PERFECT'){this.burst(r.x,r.y,r.z,'#ffe077',18,.6);this.shake=Math.max(this.shake,.014);}
   if(stats.meter>=100){stats.meter-=100;const powers:Power[]=['mega','smash','shield','giant','clone'];this.activate(powers[stats.powerCount++%powers.length],side);}
  }
  finishGrades(){for(const q of [...this.pendingGrades]){if(q.due>this.elapsed)continue;if(this.externalForm){if(this.elapsed-q.due>C.FORM_TIMEOUT)this.pendingGrades=this.pendingGrades.filter(v=>v!==q);continue;}
@@ -86,7 +86,7 @@ export class Game{
    if(b.extra){if(b.vy<0&&prev.y>=TABLE_Y+C.BALL_RADIUS&&b.y<=TABLE_Y+C.BALL_RADIUS&&Math.abs(b.x)<HALF_W&&Math.abs(b.z)<HALF_L){b.y=TABLE_Y+C.BALL_RADIUS;b.vy=Math.abs(b.vy)*C.RESTITUTION;b.bounces++;}if(Math.abs(b.x)>HALF_W){b.x=Math.sign(b.x)*HALF_W;b.vx*=-1;}if(Math.abs(b.z)>3.25){b.z=Math.sign(b.z)*3.24;b.vz*=-1;}continue;}
    if(b.vy<0&&prev.y>=TABLE_Y+this.radius&&b.y<=TABLE_Y+this.radius&&Math.abs(b.x)<HALF_W&&Math.abs(b.z)<HALF_L){
     b.y=TABLE_Y+this.radius;b.vy=Math.abs(b.vy)*C.RESTITUTION;b.bounces++;this.burst(b.x,TABLE_Y+.08,b.z,'#eaf9ff',10,.45);this.events.push({type:'bounce'});
-    for(const box of [...this.boxes])if(Math.hypot(b.x-box.x,b.z-box.z)<C.TARGET_RADIUS){this.boxes=this.boxes.filter(v=>v!==box);this.collected++;this.score+=50;this.burst(box.x,TABLE_Y+.25,box.z,POWER[box.power].color,120,1.65);this.shake=Math.max(this.shake,.07);this.activate(box.power,b.lastSide);}
+    for(const box of [...this.boxes])if(Math.hypot(b.x-box.x,b.z-box.z)<C.TARGET_RADIUS){this.boxes=this.boxes.filter(v=>v!==box);this.collected++;this.score+=50;this.burst(box.x,TABLE_Y+.25,box.z,POWER[box.power].color,26,.7);this.shake=Math.max(this.shake,.018);this.activate(box.power,b.lastSide);}
     if(b.bounces>2)lost.add(b);
    }
    if(prev.z*b.z<=0&&Math.abs(b.x)<HALF_W+.05&&b.y<TABLE_Y+C.NET_HEIGHT+this.radius&&b.y>TABLE_Y&&b.netCooldown<=0){b.z=prev.z>0?.05:-.05;b.vz*=-.42;b.vy=Math.abs(b.vy)*.35+.55;b.netCooldown=.25;this.burst(b.x,b.y,0,'#d8f3ff',24,.65);this.shake=Math.max(this.shake,.018);this.events.push({type:'net'});}
