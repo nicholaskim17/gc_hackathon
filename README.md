@@ -140,6 +140,14 @@ own client on 5174 and its own server on 3101, so it will not disturb a running 
 
 ## Troubleshooting
 
+**`npm run dev` exits immediately.**
+Almost always a server left running from an earlier session still holding port 3001. The
+server now says so and names the fix; `concurrently -k` stops the client too, which is why
+the whole command appears to die. Clear it with `lsof -ti tcp:3001 | xargs kill`, or start
+on another port with `PORT=3002 npm run dev` and give the other laptop the new address.
+If npm instead says it cannot find package.json, you are not in the project folder — `cd`
+into the repo first.
+
 **Camera permission was denied.**
 The setup screen says so and offers **Use keyboard instead**, which keeps you in the room.
 To re-grant, use the camera icon in Chrome's address bar, reload, then **Recalibrate camera**.

@@ -81,14 +81,36 @@ export class Renderer {
   }
   makeRacket(color:string,number:number){
     const group=new THREE.Group();const grain=this.texture(c=>{c.fillStyle=color;c.fillRect(0,0,256,256);c.fillStyle='#ffffff10';for(let y=0;y<256;y+=5)for(let x=0;x<256;x+=5){c.beginPath();c.arc(x,y,1,0,Math.PI*2);c.fill();}});
-    const wood=material('#ceac7e',.54),edge=material('#e9e1cd',.52),face=new THREE.MeshStandardMaterial({color:'#ffffff',map:grain,roughness:.82});
-    const disc=(radius:number,depth:number,mat:THREE.Material,z:number)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,depth,64),mat);mesh.rotation.x=Math.PI/2;mesh.scale.z=1.1;mesh.position.z=z;mesh.castShadow=true;group.add(mesh);return mesh;};
-    disc(.345,.075,wood,0);disc(.35,.025,edge,.025);disc(.335,.026,face,.045);disc(.335,.026,face,-.045);
-    const handle=new THREE.Mesh(new RoundedBoxGeometry(.14,.5,.11,3,.05),wood);handle.position.y=-.52;handle.rotation.z=-.08;handle.castShadow=true;group.add(handle);
-    const grip=new THREE.Mesh(new RoundedBoxGeometry(.145,.29,.115,3,.035),material('#283442',.8));grip.position.set(.015,-.6,0);grip.rotation.z=-.08;group.add(grip);
-    for(let i=0;i<5;i++){const band=new THREE.Mesh(new THREE.BoxGeometry(.15,.008,.12),material('#64717b',.7));band.position.set(.01,-.49-i*.047,0);band.rotation.z=-.08;group.add(band);}
+    const bladeWood=material('#ceac7e',.54),handleWood=material('#c5a173',.56),edge=material('#e9e1cd',.52);
+    const faceMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:grain,roughness:.82});
+    const gripMat=material('#283442',.8),bandMat=material('#64717b',.7);
+    // A real blade is ~15cm across and the table here is 3.3 units for 152cm, so life size
+    // is about .18 radius. .28 keeps it readable at speed without becoming a shield.
+    const R=.28;
+    const disc=(radius:number,depth:number,mat:THREE.Material,z:number)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,depth,48),mat);mesh.rotation.x=Math.PI/2;mesh.scale.z=1.1;mesh.position.z=z;mesh.castShadow=true;group.add(mesh);return mesh;};
+    const core=disc(R,.058,bladeWood,0),rim=disc(R*1.02,.02,edge,.02);
+    const front=disc(R*.97,.022,faceMat,.036),back=disc(R*.97,.022,faceMat,-.036);
+    // Handle and blade now read in proportion, so it looks gripped rather than mounted.
+    const handle=new THREE.Mesh(new RoundedBoxGeometry(.112,.38,.09,3,.04),handleWood);handle.position.set(.012,-.41,0);handle.rotation.z=-.09;handle.castShadow=true;group.add(handle);
+    const grip=new THREE.Mesh(new RoundedBoxGeometry(.118,.24,.096,3,.03),gripMat);grip.position.set(.021,-.48,0);grip.rotation.z=-.09;group.add(grip);
+    for(let i=0;i<5;i++){const band=new THREE.Mesh(new THREE.BoxGeometry(.124,.007,.1),bandMat);band.position.set(.018,-.39-i*.042,0);band.rotation.z=-.09;group.add(band);}
     const logo=this.texture(c=>{c.fillStyle='#fff8ea';c.font='900 92px Nunito, sans-serif';c.textAlign='center';c.fillText('R',128,151);c.font='700 19px Nunito, sans-serif';c.fillText(`RALLY / 0${number}`,128,190);});
-    const decal=new THREE.Mesh(new THREE.PlaneGeometry(.38,.38),new THREE.MeshBasicMaterial({map:logo,transparent:true,depthWrite:false}));decal.position.z=.06;group.add(decal);
+    const decalMat=new THREE.MeshBasicMaterial({map:logo,transparent:true,depthWrite:false});
+    const decal=new THREE.Mesh(new THREE.PlaneGeometry(R*1.12,R*1.12),decalMat);decal.position.z=.05;group.add(decal);
+    // Your own racket sits between your eye and the table. Stacking four see-through discs
+    // just makes a smudge, so ghosting swaps the blade for a bright outline in your colour:
+    // you still know exactly where your racket is, and the ball stays visible through it.
+    const outline=new THREE.Mesh(new THREE.RingGeometry(R*.95,R*1.07,56),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));
+    outline.scale.y=1.1;outline.visible=false;group.add(outline);
+    const solids=[core,rim,back],dimmed=[{m:faceMat,dim:.22},{m:handleWood,dim:.82},{m:gripMat,dim:.82},{m:bandMat,dim:.82},{m:decalMat,dim:.12}]
+      .map(e=>({...e,transparent:e.m.transparent,opacity:e.m.opacity,depthWrite:e.m.depthWrite}));
+    let ghosted:boolean|null=null;
+    group.userData.setGhost=(on:boolean)=>{
+      if(on===ghosted)return;ghosted=on;
+      for(const mesh of solids)mesh.visible=!on;
+      front.position.z=on?0:.036;outline.visible=on;
+      for(const e of dimmed){e.m.transparent=on||e.transparent;e.m.opacity=on?e.opacity*e.dim:e.opacity;e.m.depthWrite=on?false:e.depthWrite;e.m.needsUpdate=true;}
+    };
     return group;
   }
   makeBox(){
@@ -111,7 +133,9 @@ export class Renderer {
     if(!this.frame++)this.camera.position.copy(targetPosition);else this.camera.position.lerp(targetPosition,.08);
     const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;if(g.shake&&!reduce)this.camera.position.x+=Math.sin(t*100)*g.shake;
     this.camera.lookAt(look);
+    const own=demo||this.viewMode===2?-1:this.viewMode===1?1:0;
     this.rackets.forEach((r,i)=>{const p=g.rackets[i];r.position.set(p.x,p.y,p.z);r.rotation.set(-.08+(i===0?-1:1)*(p.swing*.28+p.impact*.16),p.tilt*.6,p.tilt*.6-(i===0?.13:-.13));r.scale.setScalar(g.racketScaleFor(i));r.scale.z*=1-p.impact*.12;
+      (r.userData.setGhost as (on:boolean)=>void)(i===own);
       const shield=this.shields[i];shield.visible=!!g.playerEffects[i].shield;shield.position.copy(r.position);shield.scale.set(g.racketScaleFor(i),g.racketScaleFor(i),.25);
       r.traverse(child=>{if(child instanceof THREE.Mesh&&child.material instanceof THREE.MeshStandardMaterial){child.material.emissive.set(g.playerEffects[i].smash?'#ff5c13':'#000000');child.material.emissiveIntensity=g.playerEffects[i].smash?.45+Math.sin(t*5)*.15:0;}});
       const label=this.labels[i];label.position.set(p.x,p.y+.63*g.racketScaleFor(i),p.z);label.visible=demo||i!==(this.viewMode===1?1:0);

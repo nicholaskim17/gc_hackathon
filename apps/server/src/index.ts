@@ -33,4 +33,14 @@ setInterval(()=>{const now=performance.now();accumulator+=Math.min(.1,(now-previ
  while(accumulator>=1/CONFIG.PHYSICS_HZ){for(const room of rooms.rooms.values())rooms.tick(room,1/CONFIG.PHYSICS_HZ);accumulator-=1/CONFIG.PHYSICS_HZ;}
  if(now-broadcast>=1000/CONFIG.STATE_BROADCAST_HZ){for(const room of rooms.rooms.values()){if(room.game.events.length)io.to(room.code).emit('events',room.game.events);io.to(room.code).emit('snapshot',rooms.snapshot(room));room.game.events=[];}broadcast=now;}
 },8);
-const port=Number(process.env.PORT??3001);http.listen(port,'0.0.0.0',()=>{console.log(`Rally multiplayer server: http://localhost:${port}`);for(const list of Object.values(networkInterfaces()))for(const address of list??[])if(address.family==='IPv4'&&!address.internal)console.log(`Teammate server address: http://${address.address}:${port}`);});
+const port=Number(process.env.PORT??3001);
+// A leftover server from an earlier run is the usual reason `npm run dev` dies. Say so,
+// instead of throwing an unhandled 'error' event that takes the client down with it.
+http.on('error',(error:NodeJS.ErrnoException)=>{
+ if(error.code!=='EADDRINUSE')throw error;
+ console.error(`\nPort ${port} is already in use — a Rally server is probably still running from an earlier session.`);
+ console.error(`\n  Stop it:         lsof -ti tcp:${port} | xargs kill`);
+ console.error(`  Or use another:  PORT=3002 npm run dev   (give the other laptop the new address)\n`);
+ process.exit(1);
+});
+http.listen(port,'0.0.0.0',()=>{console.log(`Rally multiplayer server: http://localhost:${port}`);for(const list of Object.values(networkInterfaces()))for(const address of list??[])if(address.family==='IPv4'&&!address.internal)console.log(`Teammate server address: http://${address.address}:${port}`);});
