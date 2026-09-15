@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { Game, POWER, TABLE_Y, type Vec3 } from './engine';
+import { CONFIG, Game, POWER, TABLE_Y, type Vec3 } from './engine';
 const material=(color:THREE.ColorRepresentation,roughness=.55,metalness=.05)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 export class Renderer {
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(43,1,.05,100);gl:THREE.WebGLRenderer;
-  rackets:THREE.Group[]=[];ballMeshes:THREE.Mesh[]=[];trails:THREE.Mesh[][]=[];ballShadows:THREE.Mesh[]=[];boxMeshes:THREE.Group[]=[];particles:THREE.InstancedMesh;
+  rackets:THREE.Group[]=[];ballMeshes:THREE.Mesh[]=[];trails:THREE.Mesh[][]=[];ballShadows:THREE.Mesh[]=[];fakeRings:THREE.Mesh[]=[];fakeLabels:THREE.Sprite[]=[];giantHalos:THREE.Mesh[]=[];boxMeshes:THREE.Group[]=[];particles:THREE.InstancedMesh;
   disposed=false;shields:THREE.Mesh[]=[];powerLabels:THREE.Sprite[]=[];
   ring:THREE.Mesh;dust:THREE.Points;labels:THREE.Sprite[]=[];hitRings:THREE.Mesh[]=[];temp=new THREE.Object3D();targetPosition=new THREE.Vector3();look=new THREE.Vector3();particleColor=new THREE.Color();width=0;height=0;viewMode=0;frame=0;pixelRatio=Math.min(window.devicePixelRatio||1,1.25);reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
   crowdBodies!:THREE.InstancedMesh;crowdHeads!:THREE.InstancedMesh;crowdBase:{x:number;y:number;z:number;r:number}[]=[];crowdPhase:number[]=[];showLights:THREE.SpotLight[]=[];impactLight:THREE.PointLight;
@@ -30,6 +30,9 @@ export class Renderer {
       const ball=new THREE.Mesh(ballGeometry,new THREE.MeshStandardMaterial({color:'#fff9eb',emissive:'#ffdaa0',emissiveIntensity:.28,roughness:.35}));ball.castShadow=true;this.ballMeshes.push(ball);this.scene.add(ball);
       const trail:THREE.Mesh[]=[];for(let n=0;n<12;n++){const m=new THREE.Mesh(ballGeometry,new THREE.MeshBasicMaterial({color:'#b7e5ff',transparent:true,opacity:.22*(1-n/12),depthWrite:false}));trail.push(m);this.scene.add(m);}this.trails.push(trail);
       const shadow=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshBasicMaterial({map:this.shadowTexture(),transparent:true,depthWrite:false,opacity:.5}));shadow.rotation.x=-Math.PI/2;this.ballShadows.push(shadow);this.scene.add(shadow);
+      const fakeRing=new THREE.Mesh(new THREE.RingGeometry(.105,.125,36),new THREE.MeshBasicMaterial({color:'#5df2df',transparent:true,opacity:.9,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));fakeRing.visible=false;this.fakeRings.push(fakeRing);this.scene.add(fakeRing);
+      const fakeLabel=this.label('DECOY / FAKE','#5df2df',28);fakeLabel.scale.set(.7,.17,1);fakeLabel.visible=false;this.fakeLabels.push(fakeLabel);this.scene.add(fakeLabel);
+      const giantHalo=new THREE.Mesh(new THREE.RingGeometry(.075,.09,40),new THREE.MeshBasicMaterial({color:'#ff5fa2',transparent:true,opacity:.65,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));giantHalo.visible=false;this.giantHalos.push(giantHalo);this.scene.add(giantHalo);
     }
     for(let i=0;i<3;i++){const box=this.makeBox();this.boxMeshes.push(box);this.scene.add(box);}
     this.particles=new THREE.InstancedMesh(new THREE.TetrahedronGeometry(1),new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}),520);this.particles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.particles.frustumCulled=false;this.scene.add(this.particles);
@@ -152,11 +155,14 @@ export class Renderer {
       const label=this.labels[i];label.position.set(p.x,p.y+.63*g.racketScaleFor(i),p.z);label.visible=demo||i!==(this.viewMode===1?1:0);
       const ring=this.hitRings[i];ring.position.copy(r.position);ring.scale.setScalar(1+(1-p.impact)*5.5);(ring.material as THREE.MeshBasicMaterial).opacity=p.impact*.9;ring.visible=p.impact>0;ring.quaternion.copy(this.camera.quaternion);
     });
-    this.ballMeshes.forEach((mesh,i)=>{const b=g.balls[i];mesh.visible=!!b;this.ballShadows[i].visible=!!b;if(!b){this.trails[i].forEach(m=>m.visible=false);return;}
-      mesh.position.set(b.x,b.y,b.z);mesh.scale.setScalar(g.radius/.065);mesh.rotation.x=t*3;mesh.rotation.z=t*2;
-      const mat=mesh.material as THREE.MeshStandardMaterial;mat.color.set(b.smash?'#ffb348':'#fff9eb');mat.emissive.set(b.smash?'#ff6a19':'#ffdda1');mat.emissiveIntensity=b.smash?1.3:.3;
-      const shadow=this.ballShadows[i];shadow.position.set(b.x,TABLE_Y+.008,b.z);shadow.visible=Math.abs(b.x)<1.65&&Math.abs(b.z)<2.65;shadow.scale.setScalar(1+Math.max(0,b.y-TABLE_Y)*.5);(shadow.material as THREE.MeshBasicMaterial).opacity=.6/(1+Math.max(0,b.y-TABLE_Y));
-      this.trails[i].forEach((m,j)=>{const p=b.trail[j];m.visible=!!p&&!this.reducedMotion;if(p){m.position.set(p.x,p.y,p.z);m.scale.setScalar((1-j/12)*g.radius/.065);(m.material as THREE.MeshBasicMaterial).color.set(b.smash?'#ff7838':'#bbddff');}});
+    this.ballMeshes.forEach((mesh,i)=>{const b=g.balls[i];mesh.visible=!!b;this.ballShadows[i].visible=!!b;this.fakeRings[i].visible=!!b?.extra;this.fakeLabels[i].visible=!!b?.extra;this.giantHalos[i].visible=!!b&&!b.extra&&g.radius>CONFIG.BALL_RADIUS;if(!b){this.trails[i].forEach(m=>m.visible=false);return;}
+      const pulse=1+Math.sin(t*11+i)*.08;mesh.position.set(b.x,b.y,b.z);mesh.scale.setScalar(g.radius/.065*(b.extra?pulse*1.12:1));mesh.rotation.x=t*(b.extra?8:3);mesh.rotation.z=t*(b.extra?-7:2);
+      const mat=mesh.material as THREE.MeshStandardMaterial;mat.color.set(b.extra?'#e16dff':b.smash?'#ffb348':g.radius>CONFIG.BALL_RADIUS?'#ff8ac0':'#fff9eb');mat.emissive.set(b.extra?'#3fffe7':b.smash?'#ff6a19':g.radius>CONFIG.BALL_RADIUS?'#ff277d':'#ffdda1');mat.emissiveIntensity=b.extra?2:b.smash?1.3:g.radius>CONFIG.BALL_RADIUS?1.1:.3;mat.transparent=b.extra;mat.opacity=b.extra ? .42 : 1;mat.wireframe=b.extra;mat.depthWrite=!b.extra;
+      const shadow=this.ballShadows[i];shadow.position.set(b.x,TABLE_Y+.008,b.z);shadow.visible=!b.extra&&Math.abs(b.x)<1.65&&Math.abs(b.z)<2.65;shadow.scale.setScalar((g.radius/CONFIG.BALL_RADIUS)*(1+Math.max(0,b.y-TABLE_Y)*.5));(shadow.material as THREE.MeshBasicMaterial).opacity=.6/(1+Math.max(0,b.y-TABLE_Y));
+      const fakeRing=this.fakeRings[i];fakeRing.position.copy(mesh.position);fakeRing.quaternion.copy(this.camera.quaternion);fakeRing.scale.setScalar(1.1+Math.sin(t*7)*.35);fakeRing.rotation.z=t*2.5;
+      const fakeLabel=this.fakeLabels[i];fakeLabel.position.set(b.x,b.y+.27,b.z);
+      const giantHalo=this.giantHalos[i];giantHalo.position.copy(mesh.position);giantHalo.quaternion.copy(this.camera.quaternion);giantHalo.scale.setScalar(g.radius/CONFIG.BALL_RADIUS*(1.35+Math.sin(t*6)*.12));giantHalo.rotation.z=-t;
+      this.trails[i].forEach((m,j)=>{const p=b.trail[j];m.visible=!!p&&!this.reducedMotion;if(p){m.position.set(p.x,p.y,p.z);m.scale.setScalar((1-j/12)*g.radius/.065*(b.extra ? .75 : 1));const trailMat=m.material as THREE.MeshBasicMaterial;trailMat.color.set(b.extra?(j%2?'#5df2df':'#dc66ff'):b.smash?'#ff7838':g.radius>CONFIG.BALL_RADIUS?'#ff5fa2':'#bbddff');trailMat.opacity=b.extra ? .14 : .22*(1-j/12);}});
     });
     this.boxMeshes.forEach((mesh,i)=>{const b=g.boxes[i];mesh.visible=!!b;if(b){mesh.position.set(b.x,TABLE_Y+.022,b.z);mesh.scale.setScalar(1+Math.sin(t*2+b.phase)*.04);if(mesh.userData.power!==b.power){const old=this.powerLabels[i];(old.material as THREE.SpriteMaterial).map?.dispose();old.material.dispose();mesh.remove(old);const label=this.label(POWER[b.power].name.toUpperCase(),POWER[b.power].color,31);label.scale.set(.85,.21,1);label.position.y=.3;mesh.add(label);this.powerLabels[i]=label;mesh.userData.power=b.power;}}});
     this.particles.count=Math.min(520,g.particles.length);g.particles.slice(-520).forEach((p,i)=>{this.temp.position.set(p.x,p.y,p.z);this.temp.rotation.set(t*p.spin+i,p.spin*t*.7,i+p.spin*t);const stretch=1+Math.min(4,Math.hypot(p.vx,p.vy,p.vz)*.35);this.temp.scale.set(p.size,p.size*stretch,p.size);this.temp.scale.multiplyScalar(Math.min(1,p.life*4));this.temp.updateMatrix();this.particles.setMatrixAt(i,this.temp.matrix);this.particles.setColorAt(i,this.particleColor.set(p.color));});this.particles.instanceMatrix.needsUpdate=true;if(this.particles.instanceColor)this.particles.instanceColor.needsUpdate=true;
