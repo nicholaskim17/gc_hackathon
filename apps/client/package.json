@@ -1,0 +1,27 @@
+{
+  "name": "@rally/client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@rally/shared": "1.0.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "@react-three/fiber": "9.7.0",
+    "three": "^0.186.0",
+    "@fontsource/nunito": "^5.3.0",
+    "@mediapipe/tasks-vision": "^0.10.32",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.186.0"
+  }
+}

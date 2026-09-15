@@ -1,0 +1,1 @@
+{"name":"@rally/shared","version":"1.0.0","private":true,"type":"module","exports":{".":"./src/engine.ts","./config":"./src/config.ts","./protocol":"./src/protocol.ts"}}

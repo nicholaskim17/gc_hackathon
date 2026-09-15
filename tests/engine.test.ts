@@ -1,0 +1,16 @@
+import {describe,it,expect} from 'vitest';
+import {Game,neutralInput,CONFIG as C} from '@rally/shared';
+const incoming=(g:Game,x=0,y=1.5)=>{g.serve=0;Object.assign(g.rackets[0],{x:0,y:1.5});Object.assign(g.balls[0],{x,y,z:2.78,vx:0,vy:0,vz:20});return [{...neutralInput()[0],x:0,y:1.5},neutralInput()[1]];};
+describe('authoritative 3D physics',()=>{
+ it('sustains assisted demo rallies without net collisions',()=>{const g=new Game(()=>.5);for(let i=0;i<120*30;i++)g.step(1/120,g.demoInputs());expect(g.best).toBeGreaterThan(20);expect(g.events.filter(e=>e.type==='net')).toHaveLength(0);expect(g.points).toEqual([0,0]);});
+ it('returns a fast ball crossing the paddle plane',()=>{const g=new Game();g.step(.02,incoming(g));expect(g.balls[0].vz).toBeLessThan(0);expect(g.rally).toBe(1);expect(g.events.find(e=>e.type==='hit')?.accuracy).toBeGreaterThan(.9);});
+ it('rejects the corners outside the collision ellipse',()=>{const g=new Game();g.step(.02,incoming(g,.5,2.05));expect(g.points).toEqual([0,1]);});
+ it('scores exactly once at a missed hit plane',()=>{const g=new Game();const inputs=incoming(g,1.5);g.step(.02,inputs);g.step(.02,inputs);expect(g.points).toEqual([0,1]);expect(g.serve).toBeGreaterThan(0);});
+ it('ends at seven and freezes further simulation',()=>{const g=new Game();g.points=[0,6];g.step(.02,incoming(g,1.5));expect(g.winner).toBe(1);expect(g.ended).toBe(true);g.step(.05,neutralInput());expect(g.points).toEqual([0,7]);});
+ it('has no sixty second match cutoff',()=>{const g=new Game();g.serve=100;for(let i=0;i<1220;i++)g.step(.05,neutralInput());expect(g.ended).toBe(false);});
+ it('bounces from the table and collects a circular target once',()=>{const g=new Game();g.serve=0;g.boxes=[{id:1,x:0,y:C.TABLE_Y,z:1,phase:0,power:'mega'}];Object.assign(g.balls[0],{x:0,y:C.TABLE_Y+.07,z:1,vx:0,vy:-2,vz:1,lastSide:1});g.step(.01,neutralInput());expect(g.balls[0].vy).toBeGreaterThan(0);expect(g.boxes).toHaveLength(0);expect(g.playerEffects[1].mega).toBe(8);});
+ it('replaces an existing power and expires big racket after eight seconds',()=>{const g=new Game();g.activate('shield');g.activate('mega');expect(g.playerEffects[0].shield).toBeUndefined();g.serve=100;for(let i=0;i<162;i++)g.step(.05,neutralInput());expect(g.racketScaleFor(0)).toBe(1);});
+ it('consumes shield for one missed return',()=>{const g=new Game();g.activate('shield');g.step(.02,incoming(g,1.5));expect(g.points).toEqual([0,0]);expect(g.playerEffects[0].shield).toBeUndefined();expect(g.balls[0].vz).toBeLessThan(0);});
+ it('consumes smash and enforces total speed cap',()=>{const g=new Game();g.activate('smash');g.step(.02,incoming(g));expect(g.playerEffects[0].smash).toBeUndefined();expect(g.balls[0].smash).toBe(true);expect(Math.hypot(g.balls[0].vx,g.balls[0].vy,g.balls[0].vz)).toBeLessThanOrEqual(C.MAX_BALL_SPEED);});
+ it('accepts exactly one bounded form result from the hitter',()=>{const g=new Game(Math.random,true);const inputs=incoming(g);inputs[0].sequence=42;g.step(.02,inputs);const hit=g.events.find(e=>e.type==='hit')!;expect(hit.inputSequence).toBe(42);expect(g.confirmForm(hit.hitId!,1,100)).toBe(false);expect(g.confirmForm(hit.hitId!,0,500)).toBe(true);expect(g.playerStats[0].meter).toBe(25);expect(g.confirmForm(hit.hitId!,0,100)).toBe(false);});
+});

@@ -1,0 +1,2 @@
+import { defineConfig } from '@playwright/test';
+export default defineConfig({testDir:'./tests/browser',timeout:90000,use:{baseURL:'http://127.0.0.1:5174',headless:true,viewport:{width:1440,height:1000}},workers:1,webServer:[{command:'npm run dev -w @rally/client -- --port 5174 --strictPort',url:'http://127.0.0.1:5174',reuseExistingServer:true},{command:'npm run dev -w @rally/server',url:'http://127.0.0.1:3101/health',reuseExistingServer:true,env:{PORT:'3101'}}]});
