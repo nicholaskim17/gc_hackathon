@@ -44,7 +44,7 @@ function connectScreen(){
  };
  $('create-room').onclick=()=>connect('create');$('join-room').onclick=()=>connect('join');
 }
-function previewMarkup(compact=false){return `<div class="camera-wrap ${compact?'compact':''}"><div id="video-host"></div><svg class="pose-overlay" id="pose-overlay" viewBox="0 0 640 480" aria-hidden="true"></svg><span class="camera-badge">${compact?'YOU':'YOUR CAMERA · LOCAL ONLY'}</span>${compact?'':`<div class="camera-placeholder" id="camera-placeholder">${icon('camera')}<span>Your side of the table</span></div>`}</div>`;}
+function previewMarkup(compact=false){return `<div class="camera-wrap ${compact?'compact':''}"><div id="video-host"></div><svg class="pose-overlay" id="pose-overlay" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><span class="camera-badge">${compact?'YOU':'YOUR CAMERA · LOCAL ONLY'}</span>${compact?'':`<div class="camera-placeholder" id="camera-placeholder">${icon('camera')}<span>Your side of the table</span></div>`}</div>`;}
 function mountVideo(){$('video-host').append(video);}
 function setup(){
  setView('setup');ready=false;mode='camera';renderer?.dispose();renderer=null;
@@ -90,7 +90,7 @@ network.onEvents=(events)=>{playEvents(events);for(const event of events){if(eve
 function updatePreview(now:number){
  const result=tracking.result;
  if(document.getElementById('pose-overlay')&&result){const segments=[[11,12],[11,13],[13,15],[12,14],[14,16]];
-  $('pose-overlay').innerHTML=segments.filter(([a,b])=>result.points[a]&&result.points[b]&&(result.points[a].visibility??0)>.5&&(result.points[b].visibility??0)>.5).map(([a,b])=>{const p=result.points[a],q=result.points[b];return `<line x1="${(1-p.x)*640}" y1="${p.y*480}" x2="${(1-q.x)*640}" y2="${q.y*480}" stroke="#86e7ff" stroke-width="3"/>`;}).join('')+(result.wrist?`<circle cx="${result.wrist.x*640}" cy="${result.wrist.y*480}" r="13" fill="#fff" stroke="#45c3ed" stroke-width="6"/>`:'');
+  $('pose-overlay').innerHTML=segments.filter(([a,b])=>result.points[a]&&result.points[b]&&(result.points[a].visibility??0)>.5&&(result.points[b].visibility??0)>.5).map(([a,b])=>{const p=result.points[a],q=result.points[b];return `<line x1="${(1-p.x)*640}" y1="${p.y*360}" x2="${(1-q.x)*640}" y2="${q.y*360}" stroke="#86e7ff" stroke-width="3"/>`;}).join('')+(result.wrist?`<circle cx="${result.wrist.x*640}" cy="${result.wrist.y*360}" r="13" fill="#fff" stroke="#45c3ed" stroke-width="6"/>`:'');
  }
  if(view==='setup'){
   const keyboardMode=mode==='keyboard';for(const [id,value] of [['camera-ready',!!tracking.stream],['head-ready',!!result?.head],['shoulder-ready',!!result?.shoulders],['hand-ready',tracking.detected(now)]] as [string,boolean][])$(id).classList.toggle('ready',value);

@@ -17,8 +17,8 @@ export class Tracking{
    this.status='Warming up motion tracking…';this.worker=new Worker(new URL('./tracking.worker.ts',import.meta.url),{type:'module'});
    this.timeout=setTimeout(()=>{if(generation===this.generation&&!this.ready)this.fail('Motion tracking took too long to load. Retry or use the keyboard.');},25000);
    this.worker.onmessage=e=>{
-    if(e.data.type==='ready'){this.ready=true;this.status='Step into view. Keep your shoulders and hips visible.';if(this.timeout)clearTimeout(this.timeout);}
-    if(e.data.type==='pose'){this.busy=false;this.result=this.mapper.update(e.data.landmarks,e.data.timestamp);this.status=({body:'Step into view. Keep your shoulders and hips visible.',hand:'Raise your playing hand and hold it there.',neutral:'Lower your hand comfortably in front of you. Hold still.',ready:'Ready — move your hand to rally!'})[this.result.calibrationStage];if(this.result.hand&&this.result.calibrated){this.seen=performance.now();this.input=this.result.input;}}
+    if(e.data.type==='ready'){this.ready=true;this.status='Step into view. Keep your head, shoulders and arms visible.';if(this.timeout)clearTimeout(this.timeout);}
+    if(e.data.type==='pose'){this.busy=false;this.result=this.mapper.update(e.data.landmarks,e.data.timestamp);this.status=({body:'Step into view. Keep your head, shoulders and arms visible.',hand:'Raise your playing hand and hold it there.',neutral:'Lower your hand comfortably in front of you. Hold still.',ready:'Ready — move your hand to rally!'})[this.result.calibrationStage];if(this.result.hand&&this.result.calibrated){this.seen=performance.now();this.input=this.result.input;}}
     if(e.data.type==='error')this.fail('Motion tracking couldn’t start. Retry the camera or use the keyboard.');
    };
    this.worker.onerror=()=>this.fail('Motion tracking couldn’t load. Retry the camera or use the keyboard.');

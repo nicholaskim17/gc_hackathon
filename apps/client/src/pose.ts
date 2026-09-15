@@ -16,8 +16,13 @@ export class PoseInput{
   const visible=(i:number)=>!!points[i]&&Number.isFinite(points[i].x)&&Number.isFinite(points[i].y)&&(points[i].visibility??1)>POSE_CONFIG.visibility;
   const r:PoseResult={input:{x:0,y:1.5,swing:0,tilt:0},wrist:null,head:visible(0),shoulders:visible(11)&&visible(12),hand:false,selected:this.selected,points,calibrationStage:this.stage,calibrated:this.stage==='ready',progress:0,confidence:0,elbowAngle:0,sequence:this.sequence};
   const finish=()=>{r.selected=this.selected;r.calibrationStage=this.stage;r.calibrated=this.stage==='ready';return r;};
-  if(!r.shoulders||!visible(23)||!visible(24)){this.since=null;this.neutral=[];this.previous=null;return finish();}
-  const left=points[11],right=points[12],midX=(left.x+right.x)/2,midY=(left.y+right.y)/2,width=Math.hypot(left.x-right.x,left.y-right.y),torso=Math.hypot((points[23].x+points[24].x)/2-midX,(points[23].y+points[24].y)/2-midY);
+  if(!r.shoulders){this.since=null;this.neutral=[];this.previous=null;return finish();}
+  const left=points[11],right=points[12],midX=(left.x+right.x)/2,midY=(left.y+right.y)/2,width=Math.hypot(left.x-right.x,left.y-right.y);
+  // A laptop webcam at desk distance crops the hips out of frame, which used to stall
+  // calibration on the body stage forever. Hips are the better torso scale when they are
+  // there; otherwise derive it from shoulder breadth, which trunk length tracks at ~1.35x.
+  const hips=visible(23)&&visible(24);
+  const torso=hips?Math.hypot((points[23].x+points[24].x)/2-midX,(points[23].y+points[24].y)/2-midY):width*1.35;
   if(width<.08||torso<.08){this.since=null;r.shoulders=false;return finish();}
   if(this.stage==='body'){
    if(this.body&&(Math.hypot(midX-this.body.x,midY-this.body.y)>.04||Math.abs(width-this.body.width)>.04))this.since=null;
@@ -32,7 +37,7 @@ export class PoseInput{
   }
   const indices=this.selected==='left'?[11,13,15]:[12,14,16];if(!indices.every(visible)){this.since=null;this.neutral=[];this.previous=null;return finish();}
   const [shoulder,elbow,wrist]=indices.map(i=>points[i]);const nx=(POSE_CONFIG.mirror?midX-wrist.x:wrist.x-midX)/width,ny=(midY-wrist.y)/torso;
-  r.hand=true;r.wrist={x:1-wrist.x,y:wrist.y};r.elbowAngle=elbowAngle(shoulder,elbow,wrist);r.confidence=Math.min(...[11,12,23,24,...indices].map(i=>points[i].visibility??1));
+  r.hand=true;r.wrist={x:1-wrist.x,y:wrist.y};r.elbowAngle=elbowAngle(shoulder,elbow,wrist);r.confidence=Math.min(...[11,12,...(hips?[23,24]:[]),...indices].map(i=>points[i].visibility??1));
   if(this.stage==='neutral'){
    // Wait for the raised hand to lower, then average a comfortable, steady pose.
    if(wrist.y<shoulder.y){this.since=null;this.neutral=[];return finish();}

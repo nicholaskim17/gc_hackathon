@@ -71,7 +71,7 @@ test('the local pose model loads in the worker and the camera is released on exi
   await createRoom(page);
   // Reaching the calibration prompt means the MediaPipe wasm runtime and .task model
   // both loaded inside the worker; a loader failure would show the tracking error here.
-  await expect(page.locator('#camera-status')).toHaveText('Step into view. Keep your shoulders and hips visible.',{timeout:60000});
+  await expect(page.locator('#camera-status')).toHaveText('Step into view. Keep your head, shoulders and arms visible.',{timeout:60000});
   await expect(page.locator('#camera-ready')).toHaveClass(/ready/);
   await page.getByRole('button',{name:'Leave room'}).click();
   await expect(page.getByRole('heading',{name:/Ready\. Set\./})).toBeVisible();

@@ -8,6 +8,21 @@ describe('body calibrated tracking',()=>{
  it('does not accept an intermittent raised wrist',()=>{const m=new PoseInput();for(let t=0;t<=500;t+=50)m.update(body(),t);m.update(body(true),550);m.update(body(),650);m.update(body(true),1000);expect(m.selected).toBe(null);});
  it('mirrors movement right and remains invariant to camera translation and scale',()=>{const a=new PoseInput(),b=new PoseInput();calibrate(a);calibrate(b);const p=body();p[15].x-=.05;const r=a.update(p,2150);const transformed=p.map(v=>({...v,x:v.x*.7+.1,y:v.y*.7+.1}));const s=b.update(transformed,2150);expect(r.input.x).toBeGreaterThan(0);expect(s.input.x).toBeCloseTo(r.input.x);expect(s.input.y).toBeCloseTo(r.input.y);});
  it('expires samples and resets calibration explicitly',()=>{const m=new PoseInput();calibrate(m);for(let t=2150;t<=3200;t+=50)m.update(body(),t);expect(m.history.every(p=>p.time>=2500)).toBe(true);m.reset();expect(m.history).toHaveLength(0);expect(m.stage).toBe('body');});
+ it('calibrates from a laptop webcam crop with the hips out of frame',()=>{
+  // Sitting at a desk, MediaPipe still reports hip landmarks but with low visibility.
+  const crop=(raised=false)=>body(raised).map((p,i)=>i===23||i===24?{...p,visibility:.05}:p);
+  const m=new PoseInput();
+  for(let t=0;t<=500;t+=50)m.update(crop(),t);
+  for(let t=550;t<=1050;t+=50)m.update(crop(true),t);
+  for(let t=1100;t<=2100;t+=50)m.update(crop(),t);
+  expect(m.stage).toBe('ready');expect(m.selected).toBe('left');
+ });
+ it('still refuses a body it cannot see the shoulders of',()=>{
+  const m=new PoseInput();
+  const noShoulders=body().map((p,i)=>i===11||i===12?{...p,visibility:.05}:p);
+  for(let t=0;t<=1200;t+=50)m.update(noShoulders,t);
+  expect(m.stage).toBe('body');
+ });
  it('calculates a straight elbow',()=>expect(elbowAngle({x:0,y:0},{x:1,y:0},{x:2,y:0})).toBeCloseTo(180));
 });
 const sample=(sequence:number,time:number,x:number,speed:number):PoseSample=>({sequence,time,wristX:x,wristY:0,paddleX:0,paddleY:1.5,wristVX:speed,wristVY:0,wristSpeed:speed,elbowAngle:130,shoulderWidth:.2,confidence:1});
