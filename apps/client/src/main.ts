@@ -16,6 +16,7 @@ const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header class="topbar"><button class="wordmark" id="home" aria-label="Rally home">rally<span>!</span><i></i></button><div class="header-note">A LITTLE MOVEMENT. A LOT OF FUN.</div><div class="header-actions"><button class="icon-button" id="sound" aria-label="Mute sound" title="Mute sound">${icon('sound')}</button><button class="icon-button" id="fullscreen" aria-label="Enter fullscreen" title="Fullscreen">${icon('full')}</button></div></header><main id="screen"></main><footer class="site-footer"><span>Everybody’s got game.</span><span>Rally together. From your side of the table. <span class="footer-spark">✳</span></span></footer><div id="announcement" class="sr-only" aria-live="polite"></div>`;
 const screen=document.querySelector<HTMLElement>('#screen')!,video=document.createElement('video');video.autoplay=true;video.muted=true;video.playsInline=true;video.setAttribute('aria-label','Mirrored local camera preview');
 const tracking=new Tracking(video),keyboard=new KeyboardInput(),sound=new Sound(),network=new Network();
+window.addEventListener('pointerdown',()=>void sound.unlock(),{passive:true});window.addEventListener('keydown',()=>void sound.unlock(),{passive:true});
 let game=new Game(),renderer:Renderer|null=null,view:'title'|'connect'|'setup'|'game'|'results'='title',mode:'camera'|'keyboard'='keyboard',session:'practice'|'shared'|'network'='practice';
 let paused=false,countdown=0,countBeep=-1,ready=false,last=performance.now(),lastSend=0,lastEffects='',lastPhase='',missingFor=0;
 let serverAddress=import.meta.env.VITE_GAME_SERVER||`${location.protocol}//${location.hostname}:3001`,storedBest=0;
@@ -143,7 +144,7 @@ function loop(now:number){const dt=Math.min(.05,(now-last)/1000);last=now;
  requestAnimationFrame(loop);
 }
  $('home').onclick=()=>title();
-$('sound').onclick=()=>{sound.unlock();sound.muted=!sound.muted;$('sound').innerHTML=icon(sound.muted?'mute':'sound');$('sound').setAttribute('aria-label',sound.muted?'Unmute sound':'Mute sound');};
+$('sound').onclick=()=>{sound.unlock();sound.setMuted(!sound.muted);$('sound').innerHTML=icon(sound.muted?'mute':'sound');$('sound').setAttribute('aria-label',sound.muted?'Unmute sound':'Mute sound');};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{announce('Fullscreen is unavailable in this browser.');}};
 window.addEventListener('keydown',e=>{if(e.code==='KeyM'&&!e.repeat&&!['INPUT','TEXTAREA'].includes((e.target as HTMLElement).tagName))$('sound').click();});
 window.addEventListener('pagehide',()=>{tracking.stop();network.suspend();});
