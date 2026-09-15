@@ -26,8 +26,9 @@ self.onmessage=async(event:MessageEvent)=>{const data=event.data;try{
  if(data.type==='init'){
   const files=await FilesetResolver.forVisionTasks(data.base+'wasm');
   const create=(delegate:'GPU'|'CPU')=>PoseLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:data.base+'models/pose_landmarker_lite.task',delegate},runningMode:'VIDEO',numPoses:1,minPoseDetectionConfidence:.5,minPosePresenceConfidence:.5,minTrackingConfidence:.5,outputSegmentationMasks:false});
-  let delegate:'GPU'|'CPU'='GPU';
-  try{tracker=await create('GPU');}catch(error){self.postMessage({type:'diagnostic',message:'GPU fallback: '+String(error)});delegate='CPU';tracker=await create('CPU');}
+  let delegate:'GPU'|'CPU'=data.delegate==='CPU'?'CPU':'GPU';
+  if(delegate==='GPU')try{tracker=await create('GPU');}catch(error){delegate='CPU';self.postMessage({type:'diagnostic',delegate,message:'GPU unavailable; using compatibility mode. '+String(error)});tracker=await create('CPU');}
+  else tracker=await create('CPU');
   self.postMessage({type:'ready',delegate});
  }else if(data.type==='frame'){
   try{const result=tracker!.detectForVideo(data.bitmap,data.timestamp);self.postMessage({type:'pose',landmarks:result.landmarks[0]??[],timestamp:data.timestamp});}finally{data.bitmap.close();}
